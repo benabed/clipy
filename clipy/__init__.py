@@ -4,7 +4,8 @@ __author__ = ["K. Benabed","L. Balkenhol"]
 __version__ = "0.1"
 __description__ = "Pure python clik implementation with jax support and candl integration."
 
-version = "clipy_"+__version__
+def version()
+  return "clipy_"+__version__
 
 
 import os

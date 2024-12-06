@@ -31,5 +31,9 @@ dependencies = [
 [tool.flit.module]
 name = "clipy"
 
+[project.scripts]
+clipy_print = "tools.clipy_print:main"
+clipy_example_py = "tools.clipy_example_py:main"
+
 [project.urls]
 Source = "https://github.com/benabed/clipy"

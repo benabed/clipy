@@ -77,7 +77,7 @@ class clik:
     else:
       self.normalize = self.normalize_mnp
   
-    print("----\n%s"%version);
+    print("----\n%s"%version());  # noqa: F405
   
     self._parlen = nm.sum(self._lmax+1)+len(self.extra_parameter_names)
     self._default_par = None
@@ -295,12 +295,12 @@ class _clik_lkl:
 
   def candl_init(self,candl,**options):
     # add prior on A_planck
-    # rename
     if options.get("all_priors",False):
       options["A_planck_prior"] = True
     if options.get("A_planck_prior",False):
       candl.set_priors({"A_planck":(1.,0.0025)},std=True)
-
+    
+    # rename
     if options.get("cosmomc_names",False):
       candl.rename(self._cosmomc_names)
   
