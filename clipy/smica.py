@@ -324,6 +324,7 @@ class smica_lkl(lkl._clik_lkl):
       self.rqh_f = nrqh_f
       print("after crop")
       self.print_lranges()
+    super()._init(candl,**options)
       
   def candl_init(self,candl,**options):
     if options.get("all_priors",False):

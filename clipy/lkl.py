@@ -303,7 +303,42 @@ class _clik_lkl:
     # rename
     if options.get("cosmomc_names",False):
       candl.rename(self._cosmomc_names)
-  
+
+    # data_selection
+    if "data_selection" in options:
+      crop_cmd=[]
+      for cmd in options["data_selection"]:
+        # use a regex rather than cutting the cmd like lennart
+        regex = re.compile("(?i)^([T|E|B][T|E|B])?(\s*(\d+)x(\d+))?(\s*ell(<|>)(\d+))?\s*(remove|only)")
+        m = regex.match(crop_cmd.strip())
+        if m[8]=="remove":
+          crop_order = "no "
+        else:
+          crop_order = "only"
+        
+        if m[1]:
+          spec = [m[1]]
+        else:
+          spec = ["TT","TE","EE"]
+
+        trail=""
+
+        if m[2].strip():
+          trail += m[2].strip()
+        
+        if m[5]:
+          if m[6]=="<":
+            trail += " -1 "+m[7]
+          else:
+            trail += " "+m[7]+" -1"
+
+        trail += " strict"
+        trail = " "+trail.strip()
+        for spc in spec:
+          crop_cmd += [crop_order+" "+spec+trail]
+      options["crop"] = crop_cmd
+
+
   _cosmomc_names = {
   "A_planck" : "calPlanck",
   }

@@ -189,13 +189,15 @@ By default, the `clipy` initialized likelihood object will use the `clik` parame
 `clipy` introduces an [optional initialization time selection](#new initialisation time features) of the likelihood content. `candl` provides a similar possibility adding a `data_selection` option to the initialization call. This option must be either a string (for a single selection order) or a list of strings (for a more complex selection) describing a list of command. This is similar to the `crop` option in `clipy`. However the [`candl` syntax](https://candl.readthedocs.io/en/latest/tutorial/usage_tips.html#data-selection) for those command is slighlty different. When initializing `candl` compatible likelihood object, an initialization time selection of the data content of the likelihood can be made either with the [`clipy` syntax](#new initialisation time features) using the `crop` option, or with the `candl` one, using the `data_selection` option. For example
  
 	candl_CMBlkl_crop = clipy.clik_candl("/path/to/some/clikfile", 
-		data_selection=["EE 100x100 l<500 remove","TE l<1000 only"])
+		data_selection=["EE 100x100 l<500 remove","TE l>1000 remove"])
 
 	
 will use data after removing the 100 GHz EE autospectra bandpowers at $$\ell<500$$ and discarding all the TE spectra for bandpowers at $$\ell>1000$$. This is the equivalent of
 	
 	candl_CMBlkl_crop = clipy.clik_candl("/path/to/some/clikfile", 
-		crop = ["crop EE 100x100 500 -1","crop TE -1 
+		crop = ["crop EE 100x100 500 -1","crop TE -1 1000"])
+		
+
 
 
 
