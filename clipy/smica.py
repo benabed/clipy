@@ -25,7 +25,7 @@ class smica_lkl(lkl._clik_lkl):
     # binning details
     self.blmin = jnp.array(lkl["bin_lmin"])
     self.blmax = jnp.array(lkl["bin_lmax"])
-    self.b_ws =  jnp.array(lkl["bin_ws"],dtype=jnp64)
+    self.b_ws =  jnp.array(lkl["bin_ws"])
     
     # the binning matrix is also simply obtained this way (but using it is slower than using the binning details, 'cause it's full of zeros)
     if self.lkl["nbins"]==len(self.ell)*self.has_cl.sum():
@@ -41,8 +41,8 @@ class smica_lkl(lkl._clik_lkl):
         bsz = self.blmax[i]-self.blmin[i]+1
         bns[i,self.blmin[i]:self.blmax[i]+1] = self.b_ws[lc:lc+bsz]
         lc+=bsz
-      self.bns = jnp.array(bns,dtype=jnp64)
-      self.bns_0 = jnp.array(bns[:self.nb,:self.lmax+1-self.lmin],dtype=jnp64)
+      self.bns = jnp.array(bns)
+      self.bns_0 = jnp.array(bns[:self.nb,:self.lmax+1-self.lmin])
       #compute the binned ells
       self.lm = jnp.dot(self.bns[:self.nb,:self.lmax+1-self.lmin],self.ell)
       self.bins = (self.blmin,self.blmax,self.b_ws)
@@ -149,7 +149,6 @@ class smica_lkl(lkl._clik_lkl):
     rq = self._get_cmb_rq(cls,bin)
     bins = self.bns_0 if bin else None
     for c in self.cmp[:max_cmp]:
-      #print(c)
       rq = c.apply(nuisance_dict,rq,bins)
     return rq
     
@@ -298,10 +297,10 @@ class smica_lkl(lkl._clik_lkl):
     cls=self._calib(cls,nuisance_dict)
     rq = self.get_model_rq(cls,nuisance_dict, False if self.bins is None else True)
     delta = self.rqh_f - rq.flatten()[self.oo]
-    lkl = jnp64(-.5) * delta.T @ (self.siginv @ delta)
+    lkl = -.5 * delta.T @ (self.siginv @ delta)
     return lkl
 
-  def _post_init(self,clkl,**options):
+  def _post_init(self,lkl,**options):
     if options.get("crop",""):
       crop_cmd = options["crop"]
       if isinstance(crop_cmd,(tuple,list)):
@@ -325,6 +324,7 @@ class smica_lkl(lkl._clik_lkl):
       self.rqh_f = nrqh_f
       print("after crop")
       self.print_lranges()
+    #super()._init(candl,**options)
       
   def candl_init(self,candl,**options):
     if options.get("all_priors",False):
