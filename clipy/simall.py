@@ -15,15 +15,15 @@ class simall_lkl(lkl._clik_lkl):
     if self.has_cl[1]:
       self.nstepsEE = lkl["nstepsEE"]
       self.stepEE = lkl["stepEE"]
-      self.probEE = jnp.reshape(jnp.array(lkl["probEE"]),(self.nell,self.nstepsEE))
+      self.probEE = jnp.reshape(jnp.array(lkl["probEE"],dtype=jnp64),(self.nell,self.nstepsEE))
     if self.has_cl[2]:
       self.nstepsBB = lkl["nstepsBB"]
       self.stepBB = lkl["stepBB"]
-      self.probBB = jnp.reshape(jnp.array(lkl["probBB"]),(self.nell,self.nstepsBB))
+      self.probBB = jnp.reshape(jnp.array(lkl["probBB"],dtype=jnp64),(self.nell,self.nstepsBB))
     if self.has_cl[3]:
       self.nstepsTE = lkl["nstepsTE"]
       self.stepTE = lkl["stepTE"]
-      self.probTE = jnp.reshape(jnp.array(lkl["probTE"]),(self.nell,self.nstepsTE))
+      self.probTE = jnp.reshape(jnp.array(lkl["probTE"],dtype=jnp64),(self.nell,self.nstepsTE))
 
   def __call__(self,cls,nuisance_dict,chi2=False):
     cls = self._calib(cls,nuisance_dict)

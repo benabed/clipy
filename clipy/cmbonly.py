@@ -54,7 +54,7 @@ class cmbonly_lkl(lkl._clik_lkl):
       self.bns["ee"] = self.bns_0[self.bin_min_ee-1:self.bin_max_ee]      
     
     # select data vector
-    self.X_data = jnp.concatenate([jnp.array(self.X_data_0[sl]) for sl in slices])
+    self.X_data = jnp.concatenate([jnp.array(self.X_data_0[sl],dtype=jnp64) for sl in slices])
     
     # select covmat
     self.bin_no = self.bin_max_tt-self.bin_min_tt+1 + self.bin_max_te-self.bin_min_te+1 + self.bin_max_ee-self.bin_min_ee+1
@@ -64,7 +64,7 @@ class cmbonly_lkl(lkl._clik_lkl):
         fisher[fslices[i],fslices[j]] = self.covmat_0[slices[i],slices[j]]
    
     # invert cov
-    self.inv_cov = jnp.array(nm.linalg.inv(fisher))
+    self.inv_cov = jnp.array(nm.linalg.inv(fisher),dtype=jnp64)
     
   def __init__(self,lkl,**options):
     import astropy.io.fits as pf
@@ -109,7 +109,7 @@ class cmbonly_lkl(lkl._clik_lkl):
 
     likedata = nm.loadtxt(like_file)
     #self.bval = jnp.array(likedata[:,0])
-    self.X_data_0 = jnp.array(likedata[:,1])
+    self.X_data_0 = jnp.array(likedata[:,1],dtype=jnp64)
     #self.X_sig = jnp.array(likedata[:,2])
 
     covmat = cldf.forfile(cov_file).read("%df64"%(self.nbin*self.nbin))
@@ -118,7 +118,7 @@ class cmbonly_lkl(lkl._clik_lkl):
     
     self.blmin = nm.loadtxt(blmin_file).astype(nm.int)
     self.blmax = nm.loadtxt(blmax_file).astype(nm.int)
-    self.bin_w = jnp.array(nm.loadtxt(binw_file))
+    self.bin_w = jnp.array(nm.loadtxt(binw_file),dtype=jnp64)
     self.bns_0 = nm.zeros((self.nbintt,(self.plmax+1-self.plmin)))
     for i in range(self.nbintt):
       self.bns_0[i,self.blmin[i]:self.blmax[i]+1] = self.bin_w[self.blmin[i]:self.blmax[i]+1]
@@ -241,7 +241,7 @@ class cmbonly_lkl(lkl._clik_lkl):
     if hasjax:
       self._X_model_jax = jax.jit(self._X_model_jax,static_argnums=(0,))
       self.__call__ = jax.jit(self.__call__,static_argnums=(0,))
-
+    
   def _X_model_jax(self,cls,nuisance_dict):
     X_model = jnp.zeros(self.bin_no)
     off = 0

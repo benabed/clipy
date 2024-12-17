@@ -17,12 +17,18 @@ try:
     import jax.scipy as jsp
     hasjax = True
     try:
-      import jax.config 
-      jax.config.update("jax_enable_x64", True)
+      from jax import config as jax_config
+      jax_config.update("jax_enable_x64", True)
       jnp64 = jnp.float64
     except:
       # print TOTO in blod red and then TATA in regulartext
-      print("\033[1mBEWARE: clik_py would really prefer your jax to enable 64bits. however, your jax install does not...\nConsider all results potentially wrong!\033[0m")
+      print("\033[1mBEWARE: clipy would really prefer your jax to enable 64bits. however, your jax install does not...\nConsider all results potentially wrong!\033[0m")
+      jnp64 = jnp.float32
+    #should I believe jax that it can use float64 ?
+    try:
+      test=jnp.zeros(1,dtype=jnp64)
+    except:
+      print("\033[1mBEWARE: clipy would really prefer your jax to enable 64bits. however, your jax install does not...\nConsider all results potentially wrong!\033[0m")
       jnp64 = jnp.float32
 except ImportError:
     import numpy as jnp
@@ -71,3 +77,10 @@ if hasjax and sys.platform=="darwin":
 else:
   _searchsorted = jnp.searchsorted
 
+supported_list = [
+  "plik_rd12_HM_v22_TT.clik",
+  "plik_rd12_HM_v22b_TTTEEE.clik",
+  ]
+
+def check_all(plc_path=""):
+  pass

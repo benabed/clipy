@@ -17,7 +17,7 @@ def components_from_file(grp):
 
 def try_float(x):
   try:
-    return float(x)
+    return jnp64(x)
   except:
     return x
 
@@ -34,7 +34,7 @@ class smica_component:
       self.lmax=lmax
 
     self.ell = jnp.arange(self.lmin,self.lmax+1)
-    self.llp1 = self.ell*(self.ell+1)/2/jnp.pi
+    self.llp1 = self.ell*(self.ell+1)/jnp.array(2*jnp.pi,dtype=jnp64)
 
     self.has_cl = has_cl
     self.nT = nT
@@ -62,11 +62,11 @@ class smica_component:
       try:
         self.color = hgrp["color"][:]
       except Exception as e:
-        self.color = jnp.array([1.]*len(self.frq),dtype=jnp.float32)    
-      self.color = jnp.array(self.color.astype(jnp.float32))
+        self.color = jnp.array([1.]*len(self.frq),dtype=jnp64)    
+      self.color = jnp.array(self.color.astype(jnp64))
       try:
         self.data = hgrp["template"][:]
-        self.data = jnp.array(self.data.astype(jnp.float32))
+        self.data = jnp.array(self.data.astype(jnp64),dtype=jnp64)
       except Exception as e:
         self.data = None
     
@@ -109,7 +109,7 @@ class smica_component:
     cur = self._build_pars(pars)
     #print(cur)
     if isinstance(cur,list):
-      return jnp.array([self._compute_component(c,shape) for c in cur])
+      return jnp.array([self._compute_component(c,shape) for c in cur],dtype=jnp64)
     else:
       return self._compute_component(cur,shape)
 
@@ -127,7 +127,7 @@ class smica_component:
           j+=i
           ncls[:,i,j] = bins[:nb,:ls] @ cls[:,i,j]
           ncls[:,j,i] = ncls[:,i,j]
-      return jnp.array(ncls)
+      return jnp.array(ncls,dtype=jnp64)
     else:
       blmin = bins[0] 
       blmax = bins[1]
@@ -136,7 +136,7 @@ class smica_component:
       ncls = nm.zeros((nb,self.m,self.m))
       for b in range(nb):
         ncls[b] = jnp.sum(cls[blmin[b]:blmax[b]+1] * (b_ws[blmin[b]:blmax[b]+1][:,jnp.newaxis,jnp.newaxis]),axis=0)
-      return jnp.array(ncls)
+      return jnp.array(ncls,dtype=jnp64)
   
   def bins(self,cls,bins=None):
     if bins == None:
@@ -151,7 +151,7 @@ class smica_component:
           j+=i
           ncls[:,i,j] = bins[:nb,:ls] @ cls[:,i,j]
           ncls[:,j,i] = ncls[:,i,j]
-      return jnp.array(ncls)
+      return jnp.array(ncls,dtype=jnp64)
     else:
       blmin = bins[0] 
       blmax = bins[1]
@@ -160,7 +160,7 @@ class smica_component:
       ncls = nm.zeros((nb,self.m,self.m))
       for b in range(nb):
         ncls[b] = jnp.sum(cls[blmin[b]:blmax[b]+1] * (b_ws[blmin[b]:blmax[b]+1][:,jnp.newaxis,jnp.newaxis]),axis=0)
-      return jnp.array(ncls)
+      return jnp.array(ncls,dtype=jnp64)
 
   @partial(jit, static_argnums=(0,))
   def apply(self,pars,cls,bins=None):
@@ -192,10 +192,10 @@ class smica_gcib(smica_component):
     defaults = self.set_defaults(defaults)
     self.defaults = defaults
 
-    base_template = self.data[:(10001*4*4)]*1.
+    base_template = self.data[:(10001*4*4)]*1
     base_template = jnp.reshape(base_template,(10001,4,4))
 
-    conv = jnp.array([float(defaults["gib_muK_MJ-2sr_%d"%(int(f))]) for f in self.frq])
+    conv = jnp.array([jnp64(defaults["gib_muK_MJ-2sr_%d"%(int(f))]) for f in self.frq],dtype=jnp64)
     A_names = []
     A_rigid = ""
     assert defaults["gib_rigid"]
@@ -207,29 +207,29 @@ class smica_gcib(smica_component):
 
     l_pivot = int(self.defaults["gib_l_pivot"])
     self.l_pivot = l_pivot
-    self.index_ref = float(self.defaults["gib_index_ref"])
-    llp1_pivot = l_pivot*(l_pivot+1)/2./jnp.pi
+    self.index_ref = jnp64(self.defaults["gib_index_ref"])
+    llp1_pivot = jnp64(l_pivot*(l_pivot+1)/2./jnp.pi)
     self.template = nm.zeros((self.lmax-self.lmin+1,self.m,self.m))
     self.A0 = nm.zeros((self.m,self.m))
     for i,frq0 in enumerate(self.frq):
       idx0 = _frq[int(frq0)]
       self.template[:,i,i] = base_template[self.lmin:self.lmax+1,idx0,idx0]
-      self.A0[i,i] = 1./(base_template[l_pivot,idx0_rigid,idx0_rigid]) *conv[i]*conv[i]/conv[idx_rigid]/conv[idx_rigid]/llp1_pivot
+      self.A0[i,i] = jnp64(1.)/(base_template[l_pivot,idx0_rigid,idx0_rigid]) *conv[i]*conv[i]/conv[idx_rigid]/conv[idx_rigid]/llp1_pivot
       if self.color is not None:
-        self.template[:,i,i] *= self.color[i]*self.color[i]
+        self.template[:,i,i] = jnp64(self.template[:,i,i])*jnp64(self.color[i]*self.color[i])
       for j,frq1 in enumerate(self.frq[i+1:]):
         j+=i+1
         idx1 = _frq[int(frq1)]
         self.template[:,i,j] = base_template[self.lmin:self.lmax+1,idx0,idx1]
         self.template[:,j,i] = base_template[self.lmin:self.lmax+1,idx1,idx0]
         if self.color is not None:
-          self.template[:,i,j] *= self.color[i]*self.color[j]
-          self.template[:,j,i] *= self.color[i]*self.color[j]
-        self.A0[i,j] = 1./(base_template[l_pivot,idx0_rigid,idx0_rigid]) *conv[i]*conv[j]/conv[idx_rigid]/conv[idx_rigid]/llp1_pivot
-        self.A0[j,i] = 1./(base_template[l_pivot,idx0_rigid,idx0_rigid]) *conv[i]*conv[j]/conv[idx_rigid]/conv[idx_rigid]/llp1_pivot
+          self.template[:,i,j] = jnp64(self.template[:,i,j])* jnp64(self.color[i]*self.color[j])
+          self.template[:,j,i] = jnp64(self.template[:,j,i])* jnp64(self.color[i]*self.color[j])
+        self.A0[i,j] = jnp64(1.)/(base_template[l_pivot,idx0_rigid,idx0_rigid]) *conv[i]*conv[j]/conv[idx_rigid]/conv[idx_rigid]/llp1_pivot
+        self.A0[j,i] = jnp64(1.)/(base_template[l_pivot,idx0_rigid,idx0_rigid]) *conv[i]*conv[j]/conv[idx_rigid]/conv[idx_rigid]/llp1_pivot
           
-    self.template = jnp.array(self.template)
-    self.A0 = jnp.array(self.A0)
+    self.template = jnp.array(self.template,dtype=jnp64)
+    self.A0 = jnp.array(self.A0,dtype=jnp64)
     self.A_names = A_rigid
     self.pars_remove = ["gib_rigid","gibsz_rigid"]
     
@@ -237,16 +237,16 @@ class smica_gcib(smica_component):
   def _compute_component(self,pars,shape=None):
     index = jnp.array(pars["gib_index"],dtype=jnp64)    
     l_pivot = int(self.defaults["gib_l_pivot"])
-    return (self.ell[:,jnp.newaxis,jnp.newaxis]/l_pivot)**(index-self.index_ref) * self.template * (pars[self.A_names]) * self.A0[jnp.newaxis,:,:]
-
+    res = (self.ell[:,jnp.newaxis,jnp.newaxis]*jnp64(1./l_pivot))**(index-self.index_ref) * self.template * (pars[self.A_names]) * self.A0[jnp.newaxis,:,:]
+    return res
 
 def sz_spectrum(nu, nu0):
   # This gives the SZ spectrum in \delta_T (CMB)
   # normalized at nu0
   x0 = nu0/56.78
   x  = nu /56.78
-  res = 2.0-x/2.0/jnp.tanh(x/2.0)
-  res0 = 2.0-x0/2.0/jnp.tanh(x0/2.0)
+  res = jnp64(2.0)-jnp64(x/2.0)/jnp.tanh(jnp64(x/2.0))
+  res0 = jnp64(2.0)-jnp64(x0/2.0)/jnp.tanh(jnp64(x0/2.0))
   return (res/res0)
 
 
@@ -267,32 +267,33 @@ class smica_gibXsz(smica_component):
       defaults["gibXsz_100_to_217"] = 0
 
     self.defaults=defaults
-    base_template = jnp.concatenate((jnp.array([0.,0.]),self.data))
+    base_template = jnp.concatenate((jnp.array([0.,0.],dtype=jnp64),self.data))
     self.template = nm.zeros((self.lmax-self.lmin+1,self.m,self.m))
     
     self.nrm_szXcib = nm.zeros((self.m,self.m))
     for i,frq0 in enumerate(self.frq):
       self.template[:,i,i] = base_template[self.lmin:self.lmax+1] * self.color[i] * self.color[i] / self.llp1
-      self.nrm_szXcib[i,i] = defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)*defaults.get("gibXsz_%d_to_217"%(int(frq0)),1.)*sz_spectrum(frq0,143.)
+      self.nrm_szXcib[i,i] = jnp64(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)*defaults.get("gibXsz_%d_to_217"%(int(frq0)),1.))*sz_spectrum(frq0,143.)
       for j,frq1 in enumerate(self.frq[i+1:]):
         j+=i+1
         self.template[:,i,j] = base_template[self.lmin:self.lmax+1] * self.color[i] * self.color[j] / self.llp1
         self.template[:,j,i] = self.template[:,i,j]
-        self.nrm_szXcib[i,j] = defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)*defaults.get("gibXsz_%d_to_217"%(int(frq1)),1.)*sz_spectrum(frq0,143.)
-        self.nrm_szXcib[j,i] = defaults.get("sz_color_%d_to_143"%(int(frq1)),1.)*defaults.get("gibXsz_%d_to_217"%(int(frq0)),1.)*sz_spectrum(frq1,143.)
+        self.nrm_szXcib[i,j] = jnp64(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)*defaults.get("gibXsz_%d_to_217"%(int(frq1)),1.))*sz_spectrum(frq0,143.)
+        self.nrm_szXcib[j,i] = jnp64(defaults.get("sz_color_%d_to_143"%(int(frq1)),1.)*defaults.get("gibXsz_%d_to_217"%(int(frq0)),1.))*sz_spectrum(frq1,143.)
     self.nrm_szXcib = nm.sqrt(self.nrm_szXcib) + nm.sqrt(self.nrm_szXcib.T)
-    self.nrm_szXcib = jnp.array(self.nrm_szXcib)
+    self.nrm_szXcib = jnp.array(self.nrm_szXcib,dtype=jnp64)
 
     self.pars_remove = ["cib_rigid","cibsz_rigid"]
     
+    self.template = jnp.array(self.template,dtype=jnp64)
     
   @partial(jit, static_argnums=(0,))
   def _compute_component(self,pars,shape=None):
-    a_cib = (pars["A_cib_217"])
+    a_cib = jnp64(pars["A_cib_217"])
     #a_cib=43.
-    a_sz = (pars["A_sz"])
-    xi_sz_cib =  (pars["xi_sz_cib"])
-    A = - xi_sz_cib * (a_sz*a_cib)**.5 * self.nrm_szXcib
+    a_sz = jnp64(pars["A_sz"])
+    xi_sz_cib =  jnp64(pars["xi_sz_cib"])
+    A = - xi_sz_cib * (a_sz*a_cib)**jnp64(.5) * self.nrm_szXcib
     return self.template * A[jnp.newaxis,:,:]
 
 
@@ -307,17 +308,17 @@ class smica_sz(smica_component):
     defaults = self.set_defaults(defaults)
     self.defaults = defaults
       
-    base_template = jnp.concatenate((jnp.array([0,0]),self.data))
+    base_template = jnp.concatenate((jnp.array([0,0],dtype=jnp64),self.data))
     self.template = nm.zeros((self.lmax-self.lmin+1,self.m,self.m))
     
-    self.nrm_szXcib = jnp.zeros((self.m,self.m))
+    self.nrm_szXcib = jnp.zeros((self.m,self.m),dtype=jnp64)
     for i,frq0 in enumerate(self.frq):
-      self.template[:,i,i] = base_template[self.lmin:self.lmax+1] * self.color[i] * self.color[i] / self.llp1 * float(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)) *float(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.))*sz_spectrum(frq0,143.)*sz_spectrum(frq0,143.)
+      self.template[:,i,i] = base_template[self.lmin:self.lmax+1] * self.color[i] * self.color[i] / self.llp1 * jnp64(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)) *jnp64(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.))*sz_spectrum(frq0,143.)*sz_spectrum(frq0,143.)
       for j,frq1 in enumerate(self.frq[i+1:]):
         j+=i+1
-        self.template[:,i,j] = base_template[self.lmin:self.lmax+1] * self.color[i] * self.color[j] / self.llp1 * float(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)) *float(defaults.get("sz_color_%d_to_143"%(int(frq1)),1.))*sz_spectrum(frq0,143.)*sz_spectrum(frq1,143.)
-        self.template[:,j,i] = base_template[self.lmin:self.lmax+1] * self.color[i] * self.color[j] / self.llp1 * float(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)) *float(defaults.get("sz_color_%d_to_143"%(int(frq1)),1.))*sz_spectrum(frq0,143.)*sz_spectrum(frq1,143.)
-    self.template = jnp.array(self.template)
+        self.template[:,i,j] = base_template[self.lmin:self.lmax+1] * self.color[i] * self.color[j] / self.llp1 * jnp64(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)) *jnp64(defaults.get("sz_color_%d_to_143"%(int(frq1)),1.))*sz_spectrum(frq0,143.)*sz_spectrum(frq1,143.)
+        self.template[:,j,i] = base_template[self.lmin:self.lmax+1] * self.color[i] * self.color[j] / self.llp1 * jnp64(defaults.get("sz_color_%d_to_143"%(int(frq0)),1.)) *jnp64(defaults.get("sz_color_%d_to_143"%(int(frq1)),1.))*sz_spectrum(frq0,143.)*sz_spectrum(frq1,143.)
+    self.template = jnp.array(self.template,dtype=jnp64)
     self.pars_remove = ["cib_rigid","cibsz_rigid","sz_color_143_to_143","sz_color_100_to_143"]
     
 
@@ -335,7 +336,7 @@ class smica_ksz(smica_component):
 
     self.template = nm.zeros((self.lmax-self.lmin+1,self.m,self.m))
     self.template[:,:3,:3] = (self.data[self.lmin:self.lmax+1]/self.data[3000]/self.llp1)[:,jnp.newaxis,jnp.newaxis] * jnp.outer(self.color,self.color)[jnp.newaxis,:,:]
-    self.template = jnp.array(self.template)
+    self.template = jnp.array(self.template,dtype=jnp64)
     self.pars_remove = ["cib_rigid","cibsz_rigid"]
     
   @partial(jit, static_argnums=(0,))
@@ -360,28 +361,28 @@ class smica_pointsource(smica_component):
 
   @partial(jit, static_argnums=(0,))    
   def _compute_component_jax(self,pars,shape=None):
-    A = jnp.zeros((self.m,self.m))
+    A = jnp.zeros((self.m,self.m),dtype=jnp64)
     l_pivot = (pars["ps_l_pivot"])
-    nrm = l_pivot*(l_pivot+1)/2/jnp.pi
+    nrm = jnp64(l_pivot*(l_pivot+1)/2/jnp.pi)
 
     for i,frq0 in enumerate(self.frq):
       for j,frq1 in enumerate(self.frq[i:]):
         j+=i
         A = A.at[i,j].set( (pars["ps_A_%d_%d"%(int(frq0),int(frq1))]/nrm*self.color[i]*self.color[j]))
         A = A.at[j,i].set( A[i,j])
-    return jnp.ones((self.lmax-self.lmin+1,self.m,self.m))*A[jnp.newaxis,:,:]
+    return jnp.ones((self.lmax-self.lmin+1,self.m,self.m),dtype=jnp64)*A[jnp.newaxis,:,:]
   
   def _compute_component_mnp(self,pars,shape=None):
     assert hasjax==False
 
     A = nm.zeros((self.m,self.m))
     l_pivot = int(pars["ps_l_pivot"])
-    nrm = l_pivot*(l_pivot+1)/2/jnp.pi
+    nrm = jnp64(l_pivot*(l_pivot+1)/2/jnp.pi)
 
     for i,frq0 in enumerate(self.frq):
       for j,frq1 in enumerate(self.frq[i:]):
         j+=i
-        A[i,j] = float(pars["ps_A_%d_%d"%(int(frq0),int(frq1))]/nrm*self.color[i]*self.color[j])
+        A[i,j] = jnp64(pars["ps_A_%d_%d"%(int(frq0),int(frq1))]/nrm*self.color[i]*self.color[j])
         A[j,i] = A[i,j]
     return jnp.ones((self.lmax-self.lmin+1,self.m,self.m))*A[jnp.newaxis,:,:]
 
@@ -424,7 +425,7 @@ class smica_cnoise(smica_component):
     import re
     for p in defaults:
       if re.match("A_cnoise_[0-9]+_[0-9]+_[TEB]+",p):
-        defaults[p] = float(defaults[p])
+        defaults[p] = jnp64(defaults[p])
     self.defaults = defaults
     base_template = jnp.reshape(self.data,(3001,12,12))
     self.template = nm.zeros((self.lmax-self.lmin+1,self.m,self.m))
@@ -445,10 +446,10 @@ class smica_cnoise(smica_component):
           teb1+=1
         self.template[:,i,j] = base_template[self.lmin:self.lmax+1,_frq[int(frq0)]+4*teb0,_frq[int(frq1)]+4*teb1]*self.color[i]*self.color[j]
         self.template[:,j,i] = self.template[:,i,j]
-    self.template = jnp.array(self.template)
+    self.template = jnp.array(self.template,dtype=jnp64)
     if  int(self.defaults["cnoise_abs"]):
       l_pivot = int(self.defaults["cnoise_l_pivot"])
-      self.template/= self.template[l_pivot-self.lmin][jnp.newaxis,:,:] * l_pivot * (l_pivot + 1)/2./jnp.pi
+      self.template/= self.template[l_pivot-self.lmin][jnp.newaxis,:,:] * l_pivot * (l_pivot + 1)/jnp64(2.*jnp.pi)
     self.pars_remove = ["cib_rigid","cibsz_rigid","cnoise_abs","cnoise_l_pivot"]
     self._compute_component = self._compute_component_mnp
     if hasjax:
@@ -456,7 +457,7 @@ class smica_cnoise(smica_component):
 
   @partial(jit, static_argnums=(0,))
   def _compute_component_jax(self,pars,shape=None):
-    A = jnp.zeros((self.m,self.m))
+    A = jnp.zeros((self.m,self.m),dtype=jnp64)
     for i,frq0 in enumerate(self.frq):
       teb0 = 0
       if i>=self.nT*self.has_cl[0]:
@@ -512,8 +513,8 @@ class smica_cnoise(smica_component):
           cteb1 = teb0
         if cfrq0>cfrq1:
           cfrq1,cfrq0 = cfrq0,cfrq1
-        A[i,j] = float(pars["A_cnoise_%d_%d_%s%s"%(int(cfrq0),int(cfrq1),"TEB"[cteb0],"TEB"[cteb1])])
-        A[j,i] = float(pars["A_cnoise_%d_%d_%s%s"%(int(cfrq0),int(cfrq1),"TEB"[cteb0],"TEB"[cteb1])])
+        A[i,j] = jnp64(pars["A_cnoise_%d_%d_%s%s"%(int(cfrq0),int(cfrq1),"TEB"[cteb0],"TEB"[cteb1])])
+        A[j,i] = jnp64(pars["A_cnoise_%d_%d_%s%s"%(int(cfrq0),int(cfrq1),"TEB"[cteb0],"TEB"[cteb1])])
     return self.template * A[jnp.newaxis,:,:]
 
 class smica_powerlaw_free_emissivity_XX(smica_component):
@@ -583,7 +584,7 @@ class smica_powerlaw_free_emissivity_XX(smica_component):
       nrm = self.l_pivot*(self.l_pivot+1)/2/jnp.pi
     else:
       nrm = 1
-    self.nrm = nrm
+    self.nrm = jnp64(nrm)
 
     self.pars_remove = ["cib_rigid","cibsz_rigid","pwfe_XX_l2_norm","pwfe_XX_l_pivot","pwfe_XX_kind"]
     self._compute_component = self._compute_component_mnp
@@ -594,9 +595,9 @@ class smica_powerlaw_free_emissivity_XX(smica_component):
   def _compute_component_jax(self,pars,shape=None):
     index = (pars["pwfe_XX_index"])
 
-    tmpl = (self.ell/self.l_pivot) ** index / self.nrm
+    tmpl = (self.ell/jnp64(self.l_pivot)) ** index / self.nrm
 
-    A = jnp.zeros((self.m,self.m))
+    A = jnp.zeros((self.m,self.m),dtype=jnp64)
     for k in self.Alist:
       v = (pars[k])
       for i,j in self.Alist[k]:
@@ -605,13 +606,13 @@ class smica_powerlaw_free_emissivity_XX(smica_component):
     return tmpl[:,jnp.newaxis,jnp.newaxis] * A[jnp.newaxis,:,:]
   def _compute_component_mnp(self,pars,shape=None):
     assert hasjax==False
-    index = float(pars["pwfe_XX_index"])
+    index = jnp64(pars["pwfe_XX_index"])
 
-    tmpl = (self.ell/self.l_pivot) ** index / self.nrm
+    tmpl = (self.ell/jnp64(self.l_pivot)) ** index / self.nrm
 
     A = nm.zeros((self.m,self.m))
     for k in self.Alist:
-      v = float(pars[k])
+      v = jnp64(pars[k])
       for i,j in self.Alist[k]:
         A[i,j] = v * self.color[i] * self.color[j]
     
@@ -629,13 +630,13 @@ class smica_calTP(smica_component):
     names = split_cldf_namelist(hgrp["names"])
     self.im = hgrp["im"].astype(jnp.int32)
     if "w" in hgrp:
-      self.w = jnp.array(hgrp["w"])
+      self.w = jnp.array(hgrp["w"],dtype=jnp64)
       self.other = hgrp["other"].astype(jnp.int32)
       self.w = jnp.reshape(self.w,(self.m,self.m,2))
       self.other.shape=(self.m,self.m,2)
       
     else: 
-      self.w = nm.zeros((self.m,self.m,2),dtype=jnp.double)
+      self.w = nm.zeros((self.m,self.m,2))
       self.w[:,:] = [1,0]
       self.other =  nm.indices((m,m)).T[:,:,::-1]
 
@@ -646,8 +647,8 @@ class smica_calTP(smica_component):
 
   @partial(jit, static_argnums=(0,))
   def _compute_component_jax(self,pars,shape=None):
-    vec = jnp.ones(self.m)
-    vals = jnp.array([(pars[k]) for k in self.varpar])
+    vec = jnp.ones(self.m,dtype=jnp64)
+    vals = jnp.array([(pars[k]) for k in self.varpar],dtype=jnp64)
     evals = self.calfunc(vals)
     #print(self.im)
     #print(self.im.dtype)
@@ -658,7 +659,7 @@ class smica_calTP(smica_component):
     gmat = jnp.outer(vec,vec)
     gmat_prime = gmat[self.other[:,:,0],self.other[:,:,1]]
     gmat = self.w[:,:,0] * gmat + self.w[:,:,1] * gmat_prime
-    res = jnp.array(gmat[jnp.newaxis,:,:])
+    res = jnp.array(gmat[jnp.newaxis,:,:],dtype=jnp64)
     #if shape==None:
     #  shape = (self.lmax-self.lmin+1,self.m,self.m)
     #res = jnp.ones(shape)*res
@@ -667,7 +668,7 @@ class smica_calTP(smica_component):
   def _compute_component_mnp(self,pars,shape=None):
     assert hasjax==False
     vec = jnp.ones(self.m)
-    vals = jnp.array([float(pars[k]) for k in self.varpar])
+    vals = jnp.array([jnp64(pars[k]) for k in self.varpar],dtype=jnp64)
     evals = self.calfunc(vals)
     vec[self.im[self.im<self.nT]] = (evals[self.im<self.nT])
     vec[self.im[self.im>=self.nT]] = (evals[self.im>=self.nT])
@@ -676,7 +677,7 @@ class smica_calTP(smica_component):
     gmat = jnp.outer(vec,vec)
     gmat_prime = gmat[self.other[:,:,0],self.other[:,:,1]]
     gmat = self.w[:,:,0] * gmat + self.w[:,:,1] * gmat_prime
-    res = jnp.array(gmat[jnp.newaxis,:,:])
+    res = jnp.array(gmat[jnp.newaxis,:,:],dtype=jnp64)
     if shape==None:
       shape = (self.lmax-self.lmin+1,self.m,self.m)
     res = jnp.ones(shape)*res
@@ -699,7 +700,7 @@ class smica_totcal(smica_component):
   @partial(jit, static_argnums=(0,))
   def _compute_component_jax(self,pars,shape=None):
     #print("---totcal---")
-    res = 1./(pars[self.varpar[0]])**2
+    res = jnp64(1.)/jnp64((pars[self.varpar[0]]))**jnp64(2)
     #print("---totcal---")
     
     #if shape==None:
@@ -709,7 +710,7 @@ class smica_totcal(smica_component):
 
   def _compute_component_mnp(self,pars,shape=None):
     assert hasjax==False
-    res = 1./float(pars[self.varpar[0]])**2
+    res = 1./jnp64(pars[self.varpar[0]])**2
     if shape==None:
       shape = (self.lmax-self.lmin+1,self.m,self.m)
     res = jnp.ones(shape)*res
@@ -726,8 +727,8 @@ class smica_totcalP(smica_component):
   
   @partial(jit, static_argnums=(0,))
   def _compute_component_jax(self,pars,shape=None):
-    calP = 1./(pars[self.varpar[0]])
-    res = jnp.ones((self.m,self.m))
+    calP = jnp64(1.)/jnp64(pars[self.varpar[0]])
+    res = jnp.ones((self.m,self.m),dtype=jnp64)
     res = res.at[:self.nT,self.nT:].set(calP)
     res = res.at[self.nT:,:self.nT].set(calP)
     #res = res.at[self.nT:,self.nT:].set(calP**2)
@@ -738,7 +739,7 @@ class smica_totcalP(smica_component):
 
   def _compute_component_mnp(self,pars,shape=None):
     assert hasjax==False
-    calP = 1./float(pars[self.varpar[0]])
+    calP = 1./jnp64(pars[self.varpar[0]])
     res = jnp.ones((self.m,self.m))
     res[:self.nT,self.nT:]=(calP)
     res[self.nT:,:self.nT]=(calP)

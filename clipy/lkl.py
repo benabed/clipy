@@ -84,9 +84,9 @@ class clik:
 
     if "check_param" in clkl["clik"]:
       par = clkl["clik"]["check_param"]
-      self._default_par = jnp.array(par)
-      res = clkl["clik"]["check_value"]
-      res2 = self(jnp.array(par))
+      self._default_par = jnp.array(par,dtype=jnp64)
+      res = jnp64(clkl["clik"]["check_value"])
+      res2 = self(jnp.array(par,dtype=jnp64))
   
       print("Checking likelihood '%s' on test data. got %g expected %g (diff %g)"%(filename,res2,res,res-res2))
 
@@ -97,9 +97,10 @@ class clik:
 
     # at this stage I can jit a few things
     if hasjax:
-      self.__call__ = jax.jit(self.__call__,static_argnums=(0,))
+      self.__call__ = jit(self.__call__,static_argnums=(0,))
       #self.prior = jax.jit(self.prior,static_argnums=(0,))
-      self.normalize_jax = jax.jit(self.normalize_jax,static_argnums=(0,))
+      self.normalize_jax = jit(self.normalize_jax,static_argnums=(0,))
+
 
   @property
   def default_par(self):
@@ -182,7 +183,7 @@ class clik:
   def parlen(self):
     return self._parlen
 
-  #@partial(jit, static_argnums=(0,))
+  @partial(jit, static_argnums=(0,))
   def normalize_jax(self,cls,nuisance_dict={}):
     if (len(cls.shape)==1 or cls.shape[-1]==self.parlen):
       nuisance_dict = dict(zip(self.extra_parameter_names,cls[-len(self.extra_parameter_names):]))|nuisance_dict
@@ -222,10 +223,10 @@ class clik:
       ncls[-len(self.extra_parameter_names):] = [nuisance_dict[p] for p in self.extra_parameter_names]
       return ncls       
 
-  #@partial(jit, static_argnums=(0,))
+  @partial(jit, static_argnums=(0,))
   def __call__(self,cls,nuisance_dict={},chi2_mode=False):
     if cls.shape[-1]==self._parlen and len(cls.shape)==2:
-      return jnp.array([self(c,nuisance_dict) for c in cls])
+      return jnp.array([self(c,nuisance_dict) for c in cls],dtype=jnp64)
     cls,nuisance_dict = self.normalize(cls,nuisance_dict)
     tot_dict = nuisance_dict|self._default
     for old,new in self.rename_dict.items():
@@ -236,14 +237,14 @@ class clik:
       lkl += self.prior(nuisance_dict)
     return lkl
 
-  #@partial(jit, static_argnums=(0,))
+  @partial(jit, static_argnums=(0,))
   def prior(self,nuisance_dict):
     lkl = 0
     for p in self._prior:
       if isinstance(p,tuple):
-        vl = jnp.array([nuisance_dict[pp] for pp in p])
+        vl = jnp.array([nuisance_dict[pp] for pp in p],dtype=jnp64)
       else:
-        vl = jnp.array(nuisance_dict[p])
+        vl = jnp.array(nuisance_dict[p],dtype=jnp64)
       #print(p,vl,self._prior[p](vl))
       lkl += self._prior[p](vl)
     return lkl
@@ -257,8 +258,8 @@ class _clik_lkl:
     self.unit = lkl["unit"]
     self.has_cl = lkl["has_cl"]
     if "lmax" in lkl:
-      self.lmin = lkl["lmin"]
-      self.lmax = lkl["lmax"]
+      self.lmin = int(lkl["lmin"])
+      self.lmax = int(lkl["lmax"])
       self.ell = jnp.arange(self.lmin,self.lmax+1)
     else:
       self.ell = lkl["ell"]
@@ -363,7 +364,7 @@ class clik_candl(clik):
 
   def normalize_to_candl(self,cls,nuisance_dict={}):
     cls,nuisance_dict = self.normalize(cls,nuisance_dict)
-    return nuisance_dict | {"Dl":{"TT":jnp.array(cls[0,2:]*self._llp1),"EE":jnp.array(cls[1,2:]*self._llp1),"BB":jnp.array(cls[2,2:]*self._llp1),"TE":jnp.array(cls[3,2:]*self._llp1)}}
+    return nuisance_dict | {"Dl":{"TT":jnp.array(cls[0,2:]*self._llp1,dtype=jnp64),"EE":jnp.array(cls[1,2:]*self._llp1,dtype=jnp64),"BB":jnp.array(cls[2,2:]*self._llp1,dtype=jnp64),"TE":jnp.array(cls[3,2:]*self._llp1,dtype=jnp64)}}
 
   def normalize_from_candl(self,params):
     cls = jnp.zeros((6,self.ell_max+1))
@@ -428,19 +429,19 @@ def generate_prior_function(v,**options):
           if options.get("std",False):
             siginv = siginv**2
         else:
-          mean = jnp.array(v[1])
-          sig = jnp.array(v[2])
+          mean = jnp.array(v[1],dtype=jnp64)
+          sig = jnp.array(v[2],dtype=jnp64)
           if len(sig)==len(mean):
             sig = jnp.diag(sig)
             if options.get("std",False):
               siginv = siginv**2
           siginv = jnp.linalg.inv(sig)
-        return lambda x: -.5*jnp.dot(jnp.dot(jnp.array(x)-mean,siginv),jnp.array(x)-mean)
+        return lambda x: -.5*jnp.dot(jnp.dot(jnp.array(x,dtype=jnp64)-mean,siginv),jnp.array(x,dtype=jnp64)-mean)
       if v[0].lower()=="u":
-        MIN = jnp.array(v[1])
-        MAX = jnp.array(v[2])
-        return lambda x: 0 if jnp.all(MIN<=jnp.array(x)<=MAX) else -jnp.inf
+        MIN = jnp.array(v[1],dtype=jnp64)
+        MAX = jnp.array(v[2],dtype=jnp64)
+        return lambda x: 0 if jnp.all(MIN<=jnp.array(x,dtype=jnp64)<=MAX) else -jnp.inf
       if v[0].lower()=="linear combination":
-        lc = jnp.array(v[1])
+        lc = jnp.array(v[1],dtype=jnp64)
         return lambda x: -.5 * (jnp.dot(lc,x)-v[2])**2/v[3]
 

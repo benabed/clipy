@@ -35,9 +35,9 @@ class gibbs_lkl(lkl._clik_lkl):
     assert cov_in.shape[0]==lmax_in-lmin_in+1
     assert cov_in.shape[1]==lmax_in-lmin_in+1
 
-    self.cl2x = jnp.array(cl2x_in[:,self.lmin-lmin_in:self.lmax+1-lmin_in]*1.)
-    self.mu = jnp.array(mu_in[self.lmin-lmin_in:self.lmax+1-lmin_in]*1.)
-    self.mu_sigma = jnp.array(mu_sigma_in[self.lmin-lmin_in:self.lmax+1-lmin_in]*1.)
+    self.cl2x = jnp.array(cl2x_in[:,self.lmin-lmin_in:self.lmax+1-lmin_in]*1.,dtype=jnp64)
+    self.mu = jnp.array(mu_in[self.lmin-lmin_in:self.lmax+1-lmin_in]*1.,dtype=jnp64)
+    self.mu_sigma = jnp.array(mu_sigma_in[self.lmin-lmin_in:self.lmax+1-lmin_in]*1.,dtype=jnp64)
     self.cov = cov_in[self.lmin-lmin_in:self.lmax+1-lmin_in,:][:,self.lmin-lmin_in:self.lmax+1-lmin_in]*1.
     
     # bandlimit cov
@@ -48,7 +48,7 @@ class gibbs_lkl(lkl._clik_lkl):
 
     prior1 = [self.cl2x[0,i,nm.max(nm.where(nm.abs(self.cl2x[1]+5)<1e-4,nm.indices((self.nl,1000))[1]+1,0),1)[i]+2] for i in range(self.nl)]
     prior2 = [self.cl2x[0,i,nm.min(nm.where(nm.abs(self.cl2x[1]-5)<1e-4,nm.indices((self.nl,1000))[1]+1,10000),1)[i]-4] for i in range(self.nl)]
-    self.prior = jnp.array([prior1,prior2])
+    self.prior = jnp.array([prior1,prior2],dtype=jnp64)
     
     self.cov = nm.linalg.inv(self.cov)
 

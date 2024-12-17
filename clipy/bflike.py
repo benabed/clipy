@@ -57,7 +57,7 @@ class bflike_lkl(lkl._clik_lkl):
     self.ndata = data[1].header["NUMDATA"] 
     self.nwrite = data[1].header["NWRITE"] 
 
-    evec = jnp.array(data[1].data[data[1].header["TTYPE1"]])
+    evec = jnp.array(data[1].data[data[1].header["TTYPE1"]],dtype=jnp64)
 
     _theta_phi = jnp.reshape(evec[:self.ntemp*2],(self.ntemp,2))
     Tvec = jnp.stack( (jnp.sin(_theta_phi[:,0])*jnp.cos(_theta_phi[:,1]) , 
@@ -267,7 +267,7 @@ class bflike_lkl(lkl._clik_lkl):
 
 def pl(cz,l_sup):
   pl = jnp.zeros((l_sup+1))
-  pl.at[1:3].set(jnp.array([sz,1.5*cz*cz-.5]))
+  pl.at[1:3].set(jnp.array([sz,1.5*cz*cz-.5],dtype=jnp64))
   for l in range(3,l_sup+1):
     pl.at[l].set((cz*(2*l -1)*pl[l-1] -(l-1)*pl[l-2])/l)
   return pl
@@ -302,8 +302,8 @@ def get_rotation_angle(r1,r2):
   #between two vectors r1 and r2
 
   eps = jnp.pi/180./3600./100.
-  zz = jnp.array([0,0,1])
-  epsilon = jnp.array( [eps,0,0])
+  zz = jnp.array([0,0,1],dtype=jnp64)
+  epsilon = jnp.array( [eps,0,0],dtype=jnp64)
 
   r12 = jnp.cross(r1,r2)
   mod = jnp.sqrt(r12@r12)
