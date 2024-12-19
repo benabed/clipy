@@ -2,14 +2,14 @@
 ======
 *November 2024*
 
-`clipy` is a pure python implementation of most of [`clik`](https://github.com/benabed/clik) with [`JAX`](https://github.com/google/jax) support (see [here](#Likelihood files) for the list of currently supported likelihoods).
+`clipy` is a pure python implementation of most of [`clik`](https://github.com/benabed/clik) with [`JAX`](https://github.com/google/jax) support (see [here](#Likelihood-files) for the list of currently supported likelihoods).
 
 `clipy` also is natively compatible with [`candl`](https://github.com/Lbalkenhol/candl/).
 
 While it is a direct pure python replacement, and thus fully compatible with `clik`, `clipy` introduces some new features:
 
-- the option to modify the data content of a likelihood at initialization time (i.e. frequencies, $$\ell$$-ranges, temperature and/or polarization) for some likelihoods (see [below](#new initialisation time features)),
-- an [alternative API](#new calling API) to pass power spectra and nuisance parameters when computing a likelihood.
+- the option to modify the data content of a likelihood at initialization time (i.e. frequencies, $$\ell$$-ranges, temperature and/or polarization) for some likelihoods (see [below](#New-initialisation-time-features)),
+- an [alternative API](#New-calling-API) to pass power spectra and nuisance parameters when computing a likelihood.
 
 ## Citing
 As for all usages of the planck likelihoods, please site [Planck 2018 V. CMB power spectra and likelihood, Planck Collaboration et al. A&A 641, A5 (2020)](	https://doi.org/10.1051/0004-6361/201936386).
@@ -28,11 +28,11 @@ following files :
 	- all the simall files (EE, BB and EEBB), including the sroll2 versions from [Pagano et al. A&A 635, A99 (2020)](https://doi.org/10.1051/0004-6361/201936630) available [here](https://web.fe.infn.it/~pagano/low_ell_datasets/sroll2).
 	- the commander file	
 
-`clipy` also allows to perform $$ell$$-range and spectra selections at initialisation time for the high-ell likelihood, without having to resort to the `clik_change_lrange` tool to create a new likelihood file ([see below](#new initialisation time features)).
+`clipy` also allows to perform $$ell$$-range and spectra selections at initialisation time for the high-ell likelihood, without having to resort to the `clik_change_lrange` tool to create a new likelihood file ([see below](#New-initialisation-time-features)).
 
 As a reminder, the `clik` likelihood files are directories containing a fixed hierarchy of files and directory containing the data and metadata necessary to compute the likelihood of a given CMB power spectrum or spectra along with nuisance parameters given a part of the Planck data (at large or small scales, using either temperature, polarisation or both datasets, and using a given subset of frequency channels).
 
-## code 
+## Code 
 The code is at version **clipy_0.1**
 
 ## Installation
@@ -54,7 +54,7 @@ As for `clik`, tests can be performed by running the `clipy_print` tool:
 ## About JAX
 [`JAX`](https://github.com/google/jax) is a Google-developed python library that allows to compute gradient and can deploy on GPU. It is used by [`candl`](https://github.com/Lbalkenhol/candl/) to perform all sorts of nice tricks, like computing fisher matrices or quickly optimizing the likelihood (in both sence of the word, finding the best parameters, and using JIT tricks to accelerate the computation).
 
-Similarily to `candl`, `clipy` does not require `JAX` but will use it if it is available. Beware however that on some architectures, 64bits computation is not available in `JAX`. This will translate into up to $$10^-4$$ differences in log likelihood computations. 
+Similarily to `candl`, `clipy` does not require `JAX` but will use it if it is available. Beware however that on some architectures, 64bits computation is not available in `JAX`. This will translate into up to $$10^-4$$ differences in log likelihood computations (for the plik files for example, this is due to a truncation of the planck overall calibration). 
 
 `JAX` support can be turned off by setting the environement parameter `CLIPY_NOJAX` or by setting a global variable in python before importing clipy 
 	
@@ -74,7 +74,7 @@ by
 
 ### Initialization
 
-`clipy` uses the same Planck likelihood files as `clik`. It is currently compatible with only a subset of those, listed [above](#Likelihood files). 
+`clipy` uses the same Planck likelihood files as `clik`. It is currently compatible with only a subset of those, listed [above](#Likelihood-files). 
 
 CMB Likelihoods are represented by instance of the `clik` objects. 
 
@@ -83,7 +83,7 @@ import clipy
 CMBlkl = clipy.clik("/path/to/some/clikfile")
 ```
 
-##### new initialisation time features
+##### New initialisation time features
 With `clipy`, the `plik` and `plik_lite` likelihood can be modified at initialization time. The ell-range and list of spectra can be modified. Further in the case of `plik` file, ranges of multipoles (notches) can be omited in each spectra (for example to test the effect of the removal of the ell=1450 dip).
 This is done with the following syntax :
 
@@ -117,10 +117,18 @@ containing the names of the nuisance parameters.
 The `extra_parameter_names` property of the object also returns the result of the `get_extra_parameter_names` function.
 
 
-##### new features of clipy
+##### New features of clipy objects
 
-ECRIRE sur DEFAULT_PAR
-ECRIRE sur initialization options
+A new `default_par` property of the object contains the default spectra and nuisance parameters that are used to perform the self test when initializing the likelihood.
+
+The new `normalize` method of the object transforms the usual spectra and nuisance parameter vector used in `clik`, such as the one that is stored in the `default_par` attribute into the new spectra and nuisance dictionnary format that `clipy` objects can use to compute likelihoods. 
+
+	default_cl_an_nuisance = CMBlkl.default_par
+	cls, nuisance_dict = CMBlkl.normalize(default_cl_an_nuisance)
+
+More details on this new call API is defined [here](#New-calling-API). The new `normalize_clik` method performs the inverse function and transforms a spectra and a nuisance.
+
+	cls_and_nuisance_vect = CMBlkl.normalize(cls, nuisance_dict)
 
 #### Computing a log likelihood
 
@@ -139,7 +147,8 @@ i.e. the sum of the lenght of the required Cls plus the number of extra nuisance
 
 It the arrayis two dimensional, it must have a shape ``(i,ntot)`` and the code will return `i` evaluations of the log likelihood.
 
-##### new calling API
+##### New calling API
+
 `clipy` introduces a new, simpler, way to compute a single log likelihood
 
 	loglkl = CMBlkl(cls,nuisance_dict)
@@ -149,6 +158,8 @@ In this case, `cls` can either be a one dimentional array as described in the pr
 If `cls` is a single dimensional array, it also contains nuisance parameter values. In this case, the nuisance parameters values will be updated by the content of `nuisance_dict` and the dictionnary can omit some of the nuisance parameter names to default to the value found in the `cls` array.
 
 If `cls` is a two dimensional array with shape `(6,max(CMBlkl.lmax))`, `nuisance_dict` must contain all of the nuisance parameter names and values.
+
+Parameter vectors fllowing the classical `clik` calling API and the new spectra and nuisance dictionnary pairs following the new API can be transformed into one another using the `normalize`  (from `clik` API to the new one) and `normalize_clik` (from the new API to the `clik` one) attribute of the clipy objects, as described [above](#New-features-of-clipy-objects).
 
 
 ## Example code
@@ -184,9 +195,9 @@ By default, the `clipy` initialized likelihood object will use the `clik` parame
 	candl_CMBlkl_cosmomc = clipy.clik_candl("/path/to/some/clikfile", cosmomc_names=True)
 	
 	
-#### Initialization time selection
+#### Initialization time options
 
-`clipy` introduces an [optional initialization time selection](#new initialisation time features) of the likelihood content. `candl` provides a similar possibility adding a `data_selection` option to the initialization call. This option must be either a string (for a single selection order) or a list of strings (for a more complex selection) describing a list of command. This is similar to the `crop` option in `clipy`. However the [`candl` syntax](https://candl.readthedocs.io/en/latest/tutorial/usage_tips.html#data-selection) for those command is slighlty different. When initializing `candl` compatible likelihood object, an initialization time selection of the data content of the likelihood can be made either with the [`clipy` syntax](#new initialisation time features) using the `crop` option, or with the `candl` one, using the `data_selection` option. For example
+`clipy` introduces an [optional initialization time selection](#New-initialisation-time-features) of the likelihood content. `candl` provides a similar possibility adding a `data_selection` option to the initialization call. This option must be either a string (for a single selection order) or a list of strings (for a more complex selection) describing a list of command. This is similar to the `crop` option in `clipy`. However the [`candl` syntax](https://candl.readthedocs.io/en/latest/tutorial/usage_tips.html#data-selection) for those command is slighlty different. When initializing `candl` compatible likelihood object, an initialization time selection of the data content of the likelihood can be made either with the [`clipy` syntax](#New-initialisation-time-features) using the `crop` option, or with the `candl` one, using the `data_selection` option. For example
  
 	candl_CMBlkl_crop = clipy.clik_candl("/path/to/some/clikfile", 
 		data_selection=["EE 100x100 l<500 remove","TE l>1000 remove"])
