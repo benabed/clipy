@@ -9,8 +9,6 @@ class simall_lkl(lkl._clik_lkl):
   def __init__(self,lkl,**options):
     super().__init__(lkl,**options)
   
-    self.nell = len(self.ell)
-    self.llp1 = self.ell*(self.ell+1)/2./nm.pi
     
     if self.has_cl[1]:
       self.nstepsEE = lkl["nstepsEE"]

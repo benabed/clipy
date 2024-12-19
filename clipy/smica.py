@@ -25,14 +25,14 @@ class smica_lkl(lkl._clik_lkl):
     # binning details
     self.blmin = jnp.array(lkl["bin_lmin"])
     self.blmax = jnp.array(lkl["bin_lmax"])
-    self.b_ws =  jnp.array(lkl["bin_ws"])
+    self.b_ws =  jnp.array(lkl["bin_ws"],dtype=jnp64)
     
     # the binning matrix is also simply obtained this way (but using it is slower than using the binning details, 'cause it's full of zeros)
     if self.lkl["nbins"]==len(self.ell)*self.has_cl.sum():
       #unbinned !
       self.bins = None
       self.lm = self.ell
-      self.bns = jnp.identity(self.lkl["nbins"])
+      self.bns = jnp.identity(self.lkl["nbins"],dtype=jnp64)
     else:
       shape = (self.lkl["nbins"],len(self.ell)*self.has_cl.sum())
       bns = nm.zeros(shape)
@@ -41,8 +41,8 @@ class smica_lkl(lkl._clik_lkl):
         bsz = self.blmax[i]-self.blmin[i]+1
         bns[i,self.blmin[i]:self.blmax[i]+1] = self.b_ws[lc:lc+bsz]
         lc+=bsz
-      self.bns = jnp.array(bns)
-      self.bns_0 = jnp.array(bns[:self.nb,:self.lmax+1-self.lmin])
+      self.bns = jnp.array(bns,dtype=jnp64)
+      self.bns_0 = jnp.array(bns[:self.nb,:self.lmax+1-self.lmin],dtype=jnp64)
       #compute the binned ells
       self.lm = jnp.dot(self.bns[:self.nb,:self.lmax+1-self.lmin],self.ell)
       self.bins = (self.blmin,self.blmax,self.b_ws)

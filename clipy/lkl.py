@@ -97,10 +97,10 @@ class clik:
 
     # at this stage I can jit a few things
     if hasjax:
-      self.__call__ = jit(self.__call__,static_argnums=(0,))
-      #self.prior = jax.jit(self.prior,static_argnums=(0,))
-      self.normalize_jax = jit(self.normalize_jax,static_argnums=(0,))
-
+      #self.__call__ = jit(self.__call__,static_argnums=(-1,))
+      #self.prior = jit(self.prior)
+      #self.normalize_jax = jit(self.normalize_jax,static_argnums=(0,))
+      pass
 
   @property
   def default_par(self):
@@ -223,7 +223,8 @@ class clik:
       ncls[-len(self.extra_parameter_names):] = [nuisance_dict[p] for p in self.extra_parameter_names]
       return ncls       
 
-  @partial(jit, static_argnums=(0,))
+  
+  @partial(jit, static_argnums=(0,3))
   def __call__(self,cls,nuisance_dict={},chi2_mode=False):
     if cls.shape[-1]==self._parlen and len(cls.shape)==2:
       return jnp.array([self(c,nuisance_dict) for c in cls],dtype=jnp64)
@@ -263,6 +264,8 @@ class _clik_lkl:
       self.ell = jnp.arange(self.lmin,self.lmax+1)
     else:
       self.ell = lkl["ell"]
+    self.llp1 = self.ell*(self.ell+1)/jnp.array(2*jnp.pi,dtype=jnp64)
+    self.nell = len(self.ell)
     self.lmaxs = [self.lmax if v else -1 for v in self.has_cl]
 
     self.nd = len(self.ell)*self.has_cl.sum()
@@ -292,7 +295,7 @@ class _clik_lkl:
   def _calib(self,cls,nuisance_dict):
     if self.free_calib is None:
       return cls
-    return cls/float(nuisance_dict[self.free_calib])**2
+    return cls/jnp64(nuisance_dict[self.free_calib])**2
 
   def candl_init(self,candl,**options):
     # add prior on A_planck
@@ -359,15 +362,17 @@ class clik_candl(clik):
     # candl expects the following 
     self.ell_min = 2
     self.ell_max = nm.max(self.lmax)
-    self._llp1 = nm.arange(2,self.ell_max+1)*(nm.arange(2,self.ell_max+1)+1.)/2./nm.pi
-
+    self._llp1 = jnp64(nm.arange(2,self.ell_max+1)*(nm.arange(2,self.ell_max+1)+1.)/2./nm.pi)
+    self.normalize_from_candl = self.normalize_from_candl_numpy
+    if hasjax:
+      self.normalize_from_candl = self.normalize_from_candl_jax
 
   def normalize_to_candl(self,cls,nuisance_dict={}):
     cls,nuisance_dict = self.normalize(cls,nuisance_dict)
     return nuisance_dict | {"Dl":{"TT":jnp.array(cls[0,2:]*self._llp1,dtype=jnp64),"EE":jnp.array(cls[1,2:]*self._llp1,dtype=jnp64),"BB":jnp.array(cls[2,2:]*self._llp1,dtype=jnp64),"TE":jnp.array(cls[3,2:]*self._llp1,dtype=jnp64)}}
 
-  def normalize_from_candl(self,params):
-    cls = jnp.zeros((6,self.ell_max+1))
+  def normalize_from_candl_jax(self,params):
+    cls = jnp.zeros((6,self.ell_max+1),dtype=jnp64)
     if self.lmax[0]>0:
       cls = cls.at[0,2:].set(params["Dl"]["TT"][:self.ell_max-2+1]/self._llp1)
     if self.lmax[1]>0:
@@ -376,6 +381,18 @@ class clik_candl(clik):
       cls = cls.at[2,2:].set(params["Dl"]["BB"][:self.ell_max-2+1]/self._llp1)
     if self.lmax[3]>0:
       cls = cls.at[3,2:].set(params["Dl"]["TE"][:self.ell_max-2+1]/self._llp1)
+    return cls,params
+  
+  def normalize_from_candl_numpy(self,params):
+    cls = jnp.zeros((6,self.ell_max+1),dtype=jnp64)
+    if self.lmax[0]>0:
+      cls[0,2:]=(params["Dl"]["TT"][:self.ell_max-2+1]/self._llp1)
+    if self.lmax[1]>0:
+      cls[1,2:]=(params["Dl"]["EE"][:self.ell_max-2+1]/self._llp1)
+    if self.lmax[2]>0:
+      cls[2,2:]=(params["Dl"]["BB"][:self.ell_max-2+1]/self._llp1)
+    if self.lmax[3]>0:
+      cls[3,2:]=(params["Dl"]["TE"][:self.ell_max-2+1]/self._llp1)
     return cls,params
 
   def log_like(self,params,chi2_mode=False):
@@ -424,19 +441,19 @@ def generate_prior_function(v,**options):
     if isinstance(v[0],str) :
       if v[0].lower()=="g":
         if isinstance(v[1],(int,float)):
-          mean=v[1]
-          siginv=1./v[2]
+          mean=jnp64(v[1])
+          siginv=jnp64(1./v[2])
           if options.get("std",False):
-            siginv = siginv**2
+            siginv = jnp64(siginv)**2
         else:
           mean = jnp.array(v[1],dtype=jnp64)
           sig = jnp.array(v[2],dtype=jnp64)
           if len(sig)==len(mean):
-            sig = jnp.diag(sig)
+            sig = jnp.diag(sig,dtype=jnp64)
             if options.get("std",False):
-              siginv = siginv**2
+              siginv = jnp64(siginv)**2
           siginv = jnp.linalg.inv(sig)
-        return lambda x: -.5*jnp.dot(jnp.dot(jnp.array(x,dtype=jnp64)-mean,siginv),jnp.array(x,dtype=jnp64)-mean)
+        return lambda x: jnp64(-.5)*jnp.dot(jnp.dot(jnp.array(x,dtype=jnp64)-mean,siginv),jnp.array(x,dtype=jnp64)-mean)
       if v[0].lower()=="u":
         MIN = jnp.array(v[1],dtype=jnp64)
         MAX = jnp.array(v[2],dtype=jnp64)

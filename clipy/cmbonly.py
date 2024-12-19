@@ -116,12 +116,12 @@ class cmbonly_lkl(lkl._clik_lkl):
     covmat.shape=(self.nbin,self.nbin)
     self.covmat_0 = covmat + covmat.T - nm.diag(covmat.diagonal())
     
-    self.blmin = nm.loadtxt(blmin_file).astype(nm.int)
-    self.blmax = nm.loadtxt(blmax_file).astype(nm.int)
+    self.blmin = nm.loadtxt(blmin_file).astype(nm.int64)
+    self.blmax = nm.loadtxt(blmax_file).astype(nm.int64)
     self.bin_w = jnp.array(nm.loadtxt(binw_file),dtype=jnp64)
-    self.bns_0 = nm.zeros((self.nbintt,(self.plmax+1-self.plmin)))
+    self.bns_0 = nm.zeros((self.nbintt,(self.plmax+1-self.plmin)),dtype=jnp64)
     for i in range(self.nbintt):
-      self.bns_0[i,self.blmin[i]:self.blmax[i]+1] = self.bin_w[self.blmin[i]:self.blmax[i]+1]
+      self.bns_0[i,self.blmin[i]:self.blmax[i]+1] = jnp64(self.bin_w[self.blmin[i]:self.blmax[i]+1])
     
     self._X_model = self._X_model_numpy
     if hasjax:
@@ -239,11 +239,12 @@ class cmbonly_lkl(lkl._clik_lkl):
 
       self._crop(r_bin_min_tt,r_bin_max_tt,r_bin_min_te,r_bin_max_te,r_bin_min_ee,r_bin_max_ee)
     if hasjax:
-      self._X_model_jax = jax.jit(self._X_model_jax,static_argnums=(0,))
-      self.__call__ = jax.jit(self.__call__,static_argnums=(0,))
+      self._X_model_jax = jit(self._X_model_jax,static_argnums=(0,))
+      self.__call__ = jit(self.__call__,static_argnums=(0,))
     
   def _X_model_jax(self,cls,nuisance_dict):
-    X_model = jnp.zeros(self.bin_no)
+    X_model = jnp.zeros(self.bin_no,dtype=jnp64)
+    cls = jnp64(cls)
     off = 0
     if self.use_tt:
       X_model = X_model.at[0:self.bin_max_tt-self.bin_min_tt+1].set(self.bns["tt"] @ cls[0,self.plmin:])
@@ -253,7 +254,7 @@ class cmbonly_lkl(lkl._clik_lkl):
       off+=self.bin_max_te-self.bin_min_te+1
     if self.use_ee:
       X_model = X_model.at[off:off+self.bin_max_ee-self.bin_min_ee+1].set(self.bns["ee"] @ cls[1,self.plmin:])
-    X_model = X_model/(nuisance_dict["A_planck"]**2)
+    X_model = X_model/jnp64(nuisance_dict["A_planck"]**2)
     return X_model
 
   def _X_model_numpy(self,cls,nuisance_dict):
@@ -272,7 +273,7 @@ class cmbonly_lkl(lkl._clik_lkl):
 
   def __call__(self,cls,nuisance_dict,chi2_mode=False):
     X_model = self._X_model(cls,nuisance_dict)
-    Y = self.X_data - X_model
-    return -.5 * jnp.dot(Y,jnp.dot(self.inv_cov,Y))
+    Y = jnp64(self.X_data - X_model)
+    return jnp64(-.5) * jnp.dot(Y,jnp.dot(self.inv_cov,Y))
 
 

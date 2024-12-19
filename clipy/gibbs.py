@@ -19,7 +19,6 @@ class gibbs_lkl(lkl._clik_lkl):
     lmax_in = sigma_file[0].header["LMAX"]
     self.nbin = sigma_file[0].header["NBIN"]
     self.nl = self.lmax+1-self.lmin
-    self.llp1 = self.ell*(self.ell+1)/2./nm.pi
     cl2x_in = sigma_file[0].data
     assert cl2x_in.shape[-1]==self.nbin
     assert cl2x_in.shape[1]==lmax_in-lmin_in+1
@@ -68,8 +67,8 @@ class gibbs_lkl(lkl._clik_lkl):
     n   = self.nbin
     nl  = self.cl2x.shape[1]
     i=0
-    klo1 = _searchsorted(self.cl2x[0,i],cls[i])
-    klo = jnp.array([max(min(_searchsorted(self.cl2x[0,i],cls[i]),n-2),1) for i in range(nl)])-1
+    klo1 = jnp.searchsorted(self.cl2x[0,i],cls[i])
+    klo = jnp.array([max(min(jnp.searchsorted(self.cl2x[0,i],cls[i]),n-2),1) for i in range(nl)])-1
     khi = klo+1
     dia_cl2_1_khi = self.cl2x[1,:,khi].diagonal()
     dia_cl2_2_khi = self.cl2x[2,:,khi].diagonal()
