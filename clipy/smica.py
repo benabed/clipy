@@ -544,16 +544,16 @@ def translate_crop(crop_cmd,mT,mP,hascl,frq,lmin,lmax,bins=None):
     
     if bins is not None:
       lmsk = bins @ lmsk
-
+      
     if notch:
       lmsk = 1-lmsk
       #strictness = 1-strictness
     if strictness<1:
       lmsk = lmsk>strictness
     else:
-      lmsk = nm.abs(lmsk-1)<1e-8
+      lmsk = nm.abs(lmsk-1)<1e-5
     msk = nm.ones((len(lmsk),ntot,ntot),dtype=nm.int8)*2
-
+   
     for kn in kind:
        for f in fc:
         if f[0]>ns[kn[0]] or f[1]>ns[kn[1]]:
