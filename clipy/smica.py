@@ -33,6 +33,7 @@ class smica_lkl(lkl._clik_lkl):
       self.bins = None
       self.lm = self.ell
       self.bns = jnp.identity(self.lkl["nbins"],dtype=jnp64)
+      self.bns_0 = None
     else:
       shape = (self.lkl["nbins"],len(self.ell)*self.has_cl.sum())
       bns = nm.zeros(shape)

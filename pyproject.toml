@@ -10,7 +10,7 @@ authors = [
 ]
 
 readme = "README.md"
-license = {file = "LICENCE"}
+license = {file = "./LICENSE"}
 
 dynamic = ["version", "description"]
 
