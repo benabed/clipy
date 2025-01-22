@@ -1,6 +1,6 @@
 `clipy`
 ======
-*November 2024*
+*January 2025*
 
 `clipy` is a pure python implementation of most of [`clik`](https://github.com/benabed/clik) with [`JAX`](https://github.com/google/jax) support (see [here](#Likelihood-files) for the list of currently supported likelihoods).
 
@@ -8,7 +8,7 @@
 
 While it is a direct pure python replacement, and thus fully compatible with `clik`, `clipy` introduces some new features:
 
-- the option to modify the data content of a likelihood at initialization time (i.e. frequencies, $$\ell$$-ranges, temperature and/or polarization) for some likelihoods (see [below](#New-initialisation-time-features)),
+- the option to modify the data content of a likelihood at initialization time (i.e. frequencies, $\ell$-ranges, temperature and/or polarization) for some likelihoods (see [below](#New-initialisation-time-features)),
 - an [alternative API](#New-calling-API) to pass power spectra and nuisance parameters when computing a likelihood.
 
 ## Citing
@@ -28,12 +28,18 @@ following files :
 	- all the simall files (EE, BB and EEBB), including the sroll2 versions from [Pagano et al. A&A 635, A99 (2020)](https://doi.org/10.1051/0004-6361/201936630) available [here](https://web.fe.infn.it/~pagano/low_ell_datasets/sroll2).
 	- the commander file	
 
-`clipy` also allows to perform $$ell$$-range and spectra selections at initialisation time for the high-ell likelihood, without having to resort to the `clik_change_lrange` tool to create a new likelihood file ([see below](#New-initialisation-time-features)).
+`clipy` also allows to perform $ell$-range and spectra selections at initialisation time for the high-ell likelihood, without having to resort to the `clik_change_lrange` tool to create a new likelihood file ([see below](#New-initialisation-time-features)).
 
 As a reminder, the `clik` likelihood files are directories containing a fixed hierarchy of files and directory containing the data and metadata necessary to compute the likelihood of a given CMB power spectrum or spectra along with nuisance parameters given a part of the Planck data (at large or small scales, using either temperature, polarisation or both datasets, and using a given subset of frequency channels).
 
-## Code 
-The code is at version **clipy_0.1**
+## Version 
+The code is at version **clipy_0.11**
+
+### History
+- **clipy_0.11** (01/25) - Correct `commander` which was failing on some macos jax version. Improve documentation. Correct crop bug in 32bit mode.
+- **clipy_0.1** (11/24) - initial release
+
+
 
 ## Installation
 `clipy` can be installed with pip:
@@ -54,7 +60,7 @@ As for `clik`, tests can be performed by running the `clipy_print` tool:
 ## About JAX
 [`JAX`](https://github.com/google/jax) is a Google-developed python library that allows to compute gradient and can deploy on GPU. It is used by [`candl`](https://github.com/Lbalkenhol/candl/) to perform all sorts of nice tricks, like computing fisher matrices or quickly optimizing the likelihood (in both sence of the word, finding the best parameters, and using JIT tricks to accelerate the computation).
 
-Similarily to `candl`, `clipy` does not require `JAX` but will use it if it is available. Beware however that on some architectures, 64bits computation is not available in `JAX`. This will translate into up to $$10^-4$$ differences in log likelihood computations (for the plik files for example, this is due to a truncation of the planck overall calibration). 
+Similarily to `candl`, `clipy` does not require `JAX` but will use it if it is available. Beware however that on some architectures, 64bits computation is not available in `JAX`. This will translate into up to $10^{-4}$ differences in log likelihood computations (for the plik files for example, this is due to a truncation of the planck overall calibration). 
 
 `JAX` support can be turned off by setting the environement parameter `CLIPY_NOJAX` or by setting a global variable in python before importing clipy 
 	
@@ -97,10 +103,10 @@ where each `cmd1`,`cmd2`, etc is a string containing a crop command. The likelih
 
 The command can be
 
-- `crop XX [nuxmu]lmin lmax [strict|half|lax]`:  will crop the spectra XX (i.e. TT, TE, EE) to only cover the range lmin to lmax. If the optional nuxmu argument is present, nu and mu must be one of (100,143,217) and the crop command will only affect this cross frequency spectrum. This only make sense for `plik` likelihoods. Since the `plik` and `plik_lite` likelihoods are binned, the lmin and lmax are to be translated to the closest bins. The definition of closest bins is modified by the optional last argument. If it is set to strict (default) the crop will ensure that no multipole out of the lmin-lmax range is used in any selected bin, if it is set to lax, the crop command will conserve any bins that contains multipole between lmin-lmax, and if it is set to half, any given selected bins cannot give more than 50% weight to any bin out of the lmin-lmax range. For example `"crop TT 100x143 80 1250 strict"` will restrict the likelihood computation to use only the 100x143 TT bandpowers that contains informations from modes stricly larger than $$\ell=80$$ and smaller than $$\ell=1250$$. The rest of the spectra at TT at other frequency will be left unmodified.
+- `crop XX [nuxmu]lmin lmax [strict|half|lax]`:  will crop the spectra XX (i.e. TT, TE, EE) to only cover the range lmin to lmax. If the optional nuxmu argument is present, nu and mu must be one of (100,143,217) and the crop command will only affect this cross frequency spectrum. This only make sense for `plik` likelihoods. Since the `plik` and `plik_lite` likelihoods are binned, the lmin and lmax are to be translated to the closest bins. The definition of closest bins is modified by the optional last argument. If it is set to strict (default) the crop will ensure that no multipole out of the lmin-lmax range is used in any selected bin, if it is set to lax, the crop command will conserve any bins that contains multipole between lmin-lmax, and if it is set to half, any given selected bins cannot give more than 50% weight to any bin out of the lmin-lmax range. For example `"crop TT 100x143 80 1250 strict"` will restrict the likelihood computation to use only the 100x143 TT bandpowers that contains informations from modes stricly larger than $\ell=80$ and smaller than $\ell=1250$. The rest of the spectra at TT at other frequency will be left unmodified.
 - `no XX [nuxmu]` will remove entirely the `XX` spectrum.  If the optional nuxmu argument is present, nu and mu must be one of (100,143,217) and the  command will only affect this cross frequency spectrum. This only make sense for `plik` likelihoods. For example `"no TE"` will exclude all TE spectra from the likelihood computation.
-- `only XX [nuxmu]lmin lmax [strict|half|lax]`: will only keep `XX` spectrum between lmin and lmax and cut all the other spectra. If the optional nuxmu argument is present, nu and mu must be one of (100,143,217) and the  command will only affect this cross frequency spectrum. This only make sense for `plik` likelihoods. The last optional argument behave similarily as the `crop` command. For example `"only EE 217x217 500 800 lax"` will restrict the computation to use only the 217 GHz EE autospectrum bandpowers that contain or use modes larger than $$\ell=500$$ and that contain or use modes smaller than $$\ell=800$$. All the rest of the data is discarded.
-- `notch XX [nuxmu]lmin lmax [strict|half|lax]`: will remove the multipole of the `XX` spectrum between lmin and lmax. If the optional nuxmu argument is present, nu and mu must be one of (100,143,217) and the  command will only affect this cross frequency spectrum. This only make sense for `plik` likelihoods. The last optional argument behave similarily as the `crop` command. For example `"notch TT 100x100 100 130"` will exclude from the computation the 100 Ghz TT autospectrum bandpowers between $$\ell=100$$ and $$\ell=130$$. The rest of the spectra at TT at other frequency will be left unmodified.
+- `only XX [nuxmu]lmin lmax [strict|half|lax]`: will only keep `XX` spectrum between lmin and lmax and cut all the other spectra. If the optional nuxmu argument is present, nu and mu must be one of (100,143,217) and the  command will only affect this cross frequency spectrum. This only make sense for `plik` likelihoods. The last optional argument behave similarily as the `crop` command. For example `"only EE 217x217 500 800 lax"` will restrict the computation to use only the 217 GHz EE autospectrum bandpowers that contain or use modes larger than $\ell=500$ and that contain or use modes smaller than $\ell=800$. All the rest of the data is discarded.
+- `notch XX [nuxmu]lmin lmax [strict|half|lax]`: will remove the multipole of the `XX` spectrum between lmin and lmax. If the optional nuxmu argument is present, nu and mu must be one of (100,143,217) and the  command will only affect this cross frequency spectrum. This only make sense for `plik` likelihoods. The last optional argument behave similarily as the `crop` command. For example `"notch TT 100x100 100 130"` will exclude from the computation the 100 Ghz TT autospectrum bandpowers between $\ell=100$ and $\ell=130$. The rest of the spectra at TT at other frequency will be left unmodified.
 
 ### Obtaining the list of spectra, lrange, nuisance parameters
 
@@ -177,17 +183,17 @@ The `candl_CMBlkl` initialized above will partially implement the `candl` API. O
 
 - `required_nuisance_parameters`: provide the list of nuisance parameters as a list of strings 
 - `unique_spec_types`: provides a list of temperature and polarization spectra used in the likelihood
-- `log_like(params)`: method that computes the log likelihood for a set of spectra and nuisance parameters. Following the `candl` API, `params` must be a dictionnary containing a set of key-value for each nuisance parameters. It must further contains a dictionnary index by the key `Dl`. This dictionnary contains the $$D_\ell=\ell(\ell+1)C_\ell/2\pi$$ for each power spectrum using the keys TT, TE, etc in upper case. This is different from the `clik` API that expects power spectra (i.e. $$\Cl$$ and not $$\Dl$). Also note that all priors are applied in the computation.
-- `chi_square(params)`: method that compute the $$\shi^2$$ for a set of spectra and nuisance parameters. `params` is defined as for the `log_like` method described above. Contrary to the `log_like` method, the priors **are not** applied.
+- `log_like(params)`: method that computes the log likelihood for a set of spectra and nuisance parameters. Following the `candl` API, `params` must be a dictionnary containing a set of key-value for each nuisance parameters. It must further contains a dictionnary index by the key `Dl`. This dictionnary contains the $D_\ell=\ell(\ell+1)C_\ell/2\pi$ for each power spectrum using the keys TT, TE, etc in upper case. This is different from the `clik` API that expects power spectra (i.e. $C_\ell$ and not $D_\ell$). Also note that all priors are applied in the computation.
+- `chi_square(params)`: method that compute the $\chi^2$ for a set of spectra and nuisance parameters. `params` is defined as for the `log_like` method described above. Contrary to the `log_like` method, the priors **are not** applied.
 
 #### Priors
 
 `candl` expects that the priors are applied in the likelihood. This is not the `clik` and `clipy` default behavior. To emulate the `candl` behavior, the following options must be set at initialization time:
 
 - `all_priors`: setting this option will make sure that all [recommended priors](https://wiki.cosmos.esa.int/planck-legacy-archive/index.php/CMB_spectrum_%26_Likelihood_Code) are applied `candl_CMBlkl_allpriors = clipy.clik_candl("/path/to/some/clikfile", all_priors=True)`
-- `A_planck_prior`: only apply the Planck calibration prior $$y_{cal} = 1 ± 0.0025$$
+- `A_planck_prior`: only apply the Planck calibration prior $y_{cal} = 1 ± 0.0025$
 - `baseline_priors`: for `plik` only, apply all recommended priors on the polarization efficiency, dust and polarized dust amplitude. This option does not apply the planck calibration prior or the joint SZ prior.
-- `SZ_prior`: for `plik` only, apply the joint SZ linear combinaison prior  $$D_{kSZ} + 1.6 D_{tSZ} = 9.5 ± 3 $$.
+- `SZ_prior`: for `plik` only, apply the joint SZ linear combinaison prior  $D_{kSZ} + 1.6 D_{tSZ} = 9.5 ± 3 $.
 
 #### Parameter names 
 By default, the `clipy` initialized likelihood object will use the `clik` parameter names. CosmoMC and Cobaya have been using different names for the nuisance parameters. For the `candl` compatible likelihood objects, it is possible to rename the parameters to the CosmoMC expected ones using the option `cosmomc_names`:
@@ -203,7 +209,7 @@ By default, the `clipy` initialized likelihood object will use the `clik` parame
 		data_selection=["EE 100x100 l<500 remove","TE l>1000 remove"])
 
 	
-will use data after removing the 100 GHz EE autospectra bandpowers at $$\ell<500$$ and discarding all the TE spectra for bandpowers at $$\ell>1000$$. This is the equivalent of
+will use data after removing the 100 GHz EE autospectra bandpowers at $\ell<500$ and discarding all the TE spectra for bandpowers at $\ell>1000$. This is the equivalent of
 	
 	candl_CMBlkl_crop = clipy.clik_candl("/path/to/some/clikfile", 
 		crop = ["crop EE 100x100 500 -1","crop TE -1 1000"])
