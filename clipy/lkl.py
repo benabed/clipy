@@ -313,6 +313,7 @@ class _clik_lkl:
       crop_cmd=[]
       for cmd in options["data_selection"]:
         # use a regex rather than cutting the cmd like lennart
+        import re
         regex = re.compile("(?i)^([T|E|B][T|E|B])?(\s*(\d+)x(\d+))?(\s*ell(<|>)(\d+))?\s*(remove|only)")
         m = regex.match(crop_cmd.strip())
         if m[8]=="remove":
