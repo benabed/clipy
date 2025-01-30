@@ -502,7 +502,7 @@ def translate_crop(crop_cmd,mT,mP,hascl,frq,lmin,lmax,bins=None):
   ntot = nm.sum(ns)
   frq = [str(f) for f in frq]
   import re
-  regex = re.compile("(?i)^(no|only|crop|notch)?\s*([T|E|B][T|E|B])(\s+(\d+)x(\d+))?(\s+(\d+)?\s+(\d+)?)?(?:\s+(strict|lax|half))?")
+  regex = re.compile("(?i)^(no|only|crop|notch)?\\s*([T|E|B][T|E|B])(\\s+(\\d+)x(\\d+))?(\\s+(\\d+)?\\s+(\\d+)?)?(?:\\s+(strict|lax|half))?")
   m = regex.match(crop_cmd.strip())
   ell = nm.arange(lmin,lmax+1)
   if m:
