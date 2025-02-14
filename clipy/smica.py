@@ -111,12 +111,12 @@ class smica_lkl(lkl._clik_lkl):
       ps = ordr//m2
       ii = (ordr%m2)//self.m
       jj = (ordr%m2)%self.m
-      ii_T = ii < self.mE
-      jj_T = jj < self.mE
-      ii_E = (ii >= self.mE) * (ii < self.mB)
-      jj_E = (jj >= self.mE) * (jj < self.mB)
-      ii_B = (ii >= self.mB) * (ii < self.m)
-      jj_B = (jj >= self.mB) * (jj < self.m)
+      ii_T = ii < self.me
+      jj_T = jj < self.me
+      ii_E = (ii >= self.me) * (ii < self.mb)
+      jj_E = (jj >= self.me) * (jj < self.mb)
+      ii_B = (ii >= self.mb) * (ii < self.m)
+      jj_B = (jj >= self.mb) * (jj < self.m)
 
       if self.hascl[0]:
         jac = jnp.array([(ps==i) * ii_T * jj_T for i in range(self.nb)],dtype=jnp.int)
@@ -144,6 +144,16 @@ class smica_lkl(lkl._clik_lkl):
     
     return ordr
   
+  def spec_order(self):
+    order_string =""
+    msk = self.msk
+    msk.shape = (-1,self.m,self.m)
+
+    if self.hascl[0]:
+      "TT"
+
+
+
   def get_model_rq(self,cls,nuisance_dict,bin=True,max_cmp=-1):
     # get the calib
     max_cmp = max_cmp if max_cmp!=-1 else len(self.cmp)
@@ -316,6 +326,7 @@ class smica_lkl(lkl._clik_lkl):
       print("inverse can be slow")
       sig = nm.linalg.inv(self.siginv)
       nsig = sig[rmsk,:][:,rmsk]
+      self.sig = nsig
       print("inverse can be slow")
       nsiginv = nm.linalg.inv(nsig)
       print("before crop")
@@ -336,7 +347,142 @@ class smica_lkl(lkl._clik_lkl):
     if options.get("SZ_priors",False):
       candl.set_priors({("A_sz","ksz_norm"):("linear combination",(1.6,1.),9.5,3)},std=True)
     super().candl_init(candl,**options)
-      
+    
+  @property
+  def data_bandpowers(self):
+    return self.rqh_f
+
+  @property
+  def covariance(self):
+    if self.sig is not None:
+      return self.sig*1.
+    else:
+      self.sig = jnp.linalg.inv(self.siginv)
+      return self.sig*1.
+
+  @property
+  def spec_order(self):
+    ns = nm.array([self.mt,self.me,self.mb])
+    sn = nm.array([0,ns[0],ns[0]+ns[1]])
+    frq = [str(f) for f in [100,143,217]]
+    ntot = nm.sum(ns)
+    a = (self.oo%(ntot*ntot))//ntot
+    b = self.oo%ntot
+    cr = []
+    for i,j in zip(a,b):
+      if len(cr)==0 or cr[-1][0]!=i or cr[-1][1]!=j:
+        cr += [(i,j)]
+    so = []
+    for i,j in cr:
+      if i<sn[1]:
+        ka="T"
+        fa = frq[i]
+      elif i<sn[2]:
+        ka="E"
+        fa = frq[i-ns[0]]
+      else:
+        ka="B"
+        fa = frq[i-ns[1]]
+      if j<sn[1]:
+        kb="T"
+        fb = frq[j]
+      elif j<sn[2]:
+        kb="E"
+        fb = frq[j-ns[0]]
+      else:
+        kb="B"
+        fb = frq[j-ns[1]]
+      so += [ka+kb+" %sx%s"%(fa,fb)]
+    return so
+
+  @property
+  def spec_types(self):
+    so = self.spec_order
+    return [s.split()[0] for s in so]
+
+  @property
+  def bins_start_ix(self):
+    ns = nm.array([self.mt,self.me,self.mb])
+    ntot = nm.sum(ns)
+    a = (self.oo%(ntot*ntot))//ntot
+    b = self.oo%ntot
+    p = a*ntot+b
+    return nm.concatenate([[0],nm.arange(len(p)-1)[p[1:]-p[:-1]!=0]+1])
+  
+  @property
+  def bins_stop_ix(self):
+    return nm.concatenate([self.bins_start_ix[1:],[len(self.oo)]])
+  
+  @property
+  def effective_ells(self):
+    lq = self.rqh*0
+    lq[:]=self.lm[:,nm.newaxis,nm.newaxis]
+    return lq[self.oo]
+
+  def get_lranges(self):
+    ns = nm.array([self.mt,self.me,self.mb])
+    sn = nm.array([0,ns[0],ns[0]+ns[1]])
+    ntot = nm.sum(ns)
+    frq = [str(f) for f in [100,143,217]]
+    nl = self.nb
+    rqmin = nm.zeros((nl,ntot,ntot))
+    rqmax = nm.zeros((nl,ntot,ntot))
+    rqmsk = nm.zeros((nl,ntot,ntot))
+    if self.bins is not None:
+      rqmin[:] = self.bin_lmin[:nl,nm.newaxis,nm.newaxis]
+      rqmax[:] = self.bin_lmax[:nl,nm.newaxis,nm.newaxis]
+    else:
+      rqmin[:] = nm.arange(self.lmax+1-self.lmin)[:nl,nm.newaxis,nm.newaxis]
+      rqmax[:] = nm.arange(self.lmax+1-self.lmin)[:nl,nm.newaxis,nm.newaxis]  
+    rqmsk.flat[nm.array(self.oo)] = 1
+    
+    res = []
+
+    for i in range(ntot):
+      if i<sn[1]:
+        ka="T"
+        fa = frq[i]
+      elif i<sn[2]:
+        ka="E"
+        fa = frq[i-sn[1]]
+      else:
+        ka="B"
+        fa = frq[i-sn[2]]
+      for j in range(ntot):
+        if nm.sum(rqmsk[:,i,j])==0:
+          continue
+        if j<sn[1]:
+          kb="T"
+          fb = frq[j]
+        elif j<sn[2]:
+          kb="E"
+          fb = frq[j-sn[1]]
+        else:
+          kb="B"
+          fb = frq[j-sn[2]]
+        li = ka+kb+" %sx%s "%(fa,fb)
+        cures = [li,ka+kb,(fa,fb),(i,j)]
+        pos = []
+        t=0
+        up=False
+        print(cures)
+        while t<nl:
+          if rqmsk[t,i,j]==1 and not up:
+            pos +=[[[t,t],[rqmin[t,i,j]+self.lmin,rqmin[t,i,j]+self.lmin]]]
+            up = True
+          if rqmsk[t,i,j]==0 and up:
+            print(pos,pos[-1])
+            pos[-1][0][-1]=t
+            pos[-1][1][-1]=rqmax[t-1,i,j]+self.lmin
+            up=False
+          t +=1
+        if up:
+          print("ARGL")
+        cures += pos
+        res += [cures]
+    return res
+
+
   def print_lranges(self):
     upstring = u'\u005F'+"/"+u'\u203E'
     downstring = u'\u203E'+"\\"+u'\u005F'

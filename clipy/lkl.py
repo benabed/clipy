@@ -7,6 +7,7 @@ import importlib
 
 _supported = {"smica":"smica","gibbs_gauss":"gibbs","simall":"simall","bflike_smw":"bflike","plik_cmbonly":"cmbonly"}
 
+import inspect
 
 from collections import OrderedDict
 
@@ -418,6 +419,70 @@ class clik_candl(clik):
       return self.log_like(cls,chi2_mode)
     return super().__call__(cls,nuisance_dict,chi2_mode)
 
+  @property
+  def data_bandpowers(self):
+    current_frame = inspect.currentframe()
+    fname = current_frame.f_code.co_name
+    try:
+      return getattr(self._internal,fname)
+    except AttributeError:
+      raise NotImplementedError(fname+" not implemented")
+  @property
+  def covariance(self):
+    current_frame = inspect.currentframe()
+    fname = current_frame.f_code.co_name
+    try:
+      return getattr(self._internal,fname)
+    except AttributeError:
+      raise NotImplementedError(fname+" not implemented")
+  @property
+  def window_functions(self):
+    current_frame = inspect.currentframe()
+    fname = current_frame.f_code.co_name
+    try:
+      return getattr(self._internal,fname)
+    except AttributeError:
+      raise NotImplementedError(fname+" not implemented")
+  @property
+  def spec_order(self):
+    current_frame = inspect.currentframe()
+    fname = current_frame.f_code.co_name
+    try:
+      return getattr(self._internal,fname)
+    except AttributeError:
+      raise NotImplementedError(fname+" not implemented")
+  @property
+  def spec_types(self):
+    current_frame = inspect.currentframe()
+    fname = current_frame.f_code.co_name
+    try:
+      return getattr(self._internal,fname)
+    except AttributeError:
+      raise NotImplementedError(fname+" not implemented")
+  @property
+  def bins_start_ix(self):
+    current_frame = inspect.currentframe()
+    fname = current_frame.f_code.co_name
+    try:
+      return getattr(self._internal,fname)
+    except AttributeError:
+      raise NotImplementedError(fname+" not implemented")
+  @property
+  def bins_stop_ix(self):
+    current_frame = inspect.currentframe()
+    fname = current_frame.f_code.co_name
+    try:
+      return getattr(self._internal,fname)
+    except AttributeError:
+      raise NotImplementedError(fname+" not implemented")
+  @property
+  def effective_ells(self):
+    current_frame = inspect.currentframe()
+    fname = current_frame.f_code.co_name
+    try:
+      return getattr(self._internal,fname)
+    except AttributeError:
+      raise NotImplementedError(fname+" not implemented")
 
 
   @property
