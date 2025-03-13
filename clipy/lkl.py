@@ -22,94 +22,81 @@ def cls_fromcosmomc(cls):
   ncls = ncls.at[3,2:].set(cls[2,:self.lmax+1-2]/llp1)
   return ncls
 
+class _clik_common:
+  @partial(jit, static_argnums=(0,))
+  def prior(self,nuisance_dict):
+    lkl = 0
+    for p in self._prior:
+      if isinstance(p,tuple):
+        vl = jnp.array([nuisance_dict[pp] for pp in p],dtype=jnp64)
+      else:
+        vl = jnp.array(nuisance_dict[p],dtype=jnp64)
+      #print(p,vl,self._prior[p](vl))
+      lkl += self._prior[p](vl)
+    return lkl
 
+  @partial(jit, static_argnums=(0,3))
+  def __call__(self,cls,nuisance_dict={},chi2_mode=False):
+    if cls.shape[-1]==self._parlen and len(cls.shape)==2:
+      return jnp.array([self(c,nuisance_dict) for c in cls],dtype=jnp64)
+    cls,nuisance_dict = self.normalize(cls,nuisance_dict)
+    tot_dict = nuisance_dict|self._default
+    for old,new in self.rename_dict.items():
+      tot_dict[old] = tot_dict[new]
+      del(tot_dict[new])
+    lkl = self._internal(cls,tot_dict,chi2_mode)
+    if not chi2_mode:
+      lkl += self.prior(nuisance_dict)
+    return lkl
 
-class clik:
-  def __init__(self,filename,**options):
+  @partial(jit, static_argnums=(0,))
+  def normalize_jax(self,cls,nuisance_dict={}):
+    if (len(cls.shape)==1 or cls.shape[-1]==self.parlen):
+      nuisance_dict = dict(zip(self.extra_parameter_names,cls[-len(self.extra_parameter_names):]))|nuisance_dict
+      ncls = jnp.zeros((len(self.lmax),nm.max(self.lmax)+1),dtype=jnp64)
+      off = 0
+      for i in range(len(self.lmax)):
+        if self.lmax[i]!=-1:
+          ncls = ncls.at[i].set(cls[off:off+self.lmax[i]+1])
+          off += self.lmax[i]+1
+      return ncls,nuisance_dict
+    return cls,nuisance_dict
 
-    clkl = cldf.open(filename)
+  def normalize_mnp(self,cls,nuisance_dict={}):
+    if (len(cls.shape)==1 or cls.shape[-1]==self.parlen):
+      nuisance_dict = dict(zip(self.extra_parameter_names,cls[-len(self.extra_parameter_names):]))|nuisance_dict
+      ncls = jnp.zeros((len(self.lmax),nm.max(self.lmax)+1),dtype=jnp64)
+      off = 0
+      for i in range(len(self.lmax)):
+        if self.lmax[i]!=-1:
+          ncls[i] = (cls[off:off+self.lmax[i]+1])
+          off += self.lmax[i]+1
+      return ncls,nuisance_dict
+    return cls,nuisance_dict
 
-    if clkl["clik/n_lkl_object"]!=1:
-      raise clik_emul_error("only one likelihood object supported in clik_emul")
-
-    lkl = clkl["clik/lkl_0"]
-
-    self._lmax = clkl["clik/lmax"]
-
-
-    lkl_type = lkl["lkl_type"]
-
-    if lkl_type not in _supported:
-      raise clik_emul_error("unsupported likelihood type %s"%lkl_type)
-
-    if _supported[lkl_type]: 
-      lkl_type = _supported[lkl_type]
-
-    try:
-      md = importlib.import_module("."+lkl_type,__package__)
-      self._internal = getattr(md,"%s_lkl"%lkl_type)(lkl,**options)
-    except ImportError as e:
-      raise clik_emul_error("could not import likelihood %s"%lkl_type)
-    except AttributeError as e:
-      raise clik_emul_error("could not find likelihood %s"%lkl_type)
-
-    self._default =OrderedDict()
-  
-    if "default" in clkl["clik"]:
-      names = clkl["clik/default/name"].replace("\0"," ").split()
-      loc = clkl["clik/default/loc"]
-      for n,l in zip(names,loc):
-        self._default[n] = l
-  
-    self._prior =OrderedDict()
-  
-    if "prior" in clkl["clik"]:
-      names = clkl["clik/prior/name"].replace("\0"," ").split()
-      loc = clkl["clik/prior/loc"]
-      var = clkl["clik/prior/var"]
-      for n,l,v in zip(names,loc,var):
-        self._prior[n] = (l,v)
-  
-    self.rename_dict={}
-
-    # jax or numpy :
-    if hasjax:
-      self.normalize = self.normalize_jax
+  def normalize_clik(self,cls,nuisance_dict={}):
+    if (len(cls.shape)==1 or cls.shape[-1]==self.parlen):
+      ncls = nm.array(cls*1.)
+      ncls[-len(self.extra_parameter_names):] = [nuisance_dict[p] for p in self.extra_parameter_names]
+      return ncls
     else:
-      self.normalize = self.normalize_mnp
-  
-    print("----\n%s"%version());  # noqa: F405
-  
-    self._parlen = nm.sum(self._lmax+1)+len(self.extra_parameter_names)
-    self._default_par = None
+      ncls = nm.zeros(self.parlen)
+      off = 0
+      for i in range(len(self.lmax)):
+        if self.lmax[i]!=-1:
+          ncls[off:off+self.lmax[i]+1] = cls[i] 
+          off += self.lmax[i]+1
+      ncls[-len(self.extra_parameter_names):] = [nuisance_dict[p] for p in self.extra_parameter_names]
+      return ncls       
 
-    if "check_param" in clkl["clik"]:
-      par = clkl["clik"]["check_param"]
-      self._default_par = jnp.array(par,dtype=jnp64)
-      res = jnp64(clkl["clik"]["check_value"])
-      res2 = self(jnp.array(par,dtype=jnp64))
-  
-      print("Checking likelihood '%s' on test data. got %g expected %g (diff %g)"%(filename,res2,res,res-res2))
-
-    print("----")
-
-    if hasattr(self._internal,"_post_init"):
-      self._internal._post_init(clkl,**options)
-
-    # at this stage I can jit a few things
-    if hasjax:
-      #self.__call__ = jit(self.__call__,static_argnums=(-1,))
-      #self.prior = jit(self.prior)
-      #self.normalize_jax = jit(self.normalize_jax,static_argnums=(0,))
-      pass
 
   @property
   def default_par(self):
     return self._default_par
-  
-  def __getattr__(self,name):
-    return getattr(self._internal,name)
 
+  @property
+  def has_cl(self):
+    return self.get_has_cl()
   def get_has_cl (self):
     return [1 if l!=-1 else 0 for l in self.lmax]
 
@@ -170,7 +157,7 @@ class clik:
     return self.get_lmax()
 
   def get_extra_parameter_names(self,rename=True):
-    ext = [v for v in self._internal.varpar if v not in self._default]
+    ext = [v for v in self.varpar if v not in self._default]
     if rename:
       return [self.rename_dict.get(old,old) for old in ext if self.rename_dict.get(old,old) not in self._default]
     return v
@@ -184,72 +171,91 @@ class clik:
   def parlen(self):
     return self._parlen
 
-  @partial(jit, static_argnums=(0,))
-  def normalize_jax(self,cls,nuisance_dict={}):
-    if (len(cls.shape)==1 or cls.shape[-1]==self.parlen):
-      nuisance_dict = dict(zip(self.extra_parameter_names,cls[-len(self.extra_parameter_names):]))|nuisance_dict
-      ncls = jnp.zeros((6,nm.max(self.lmax)+1),dtype=jnp64)
-      off = 0
-      for i in range(6):
-        if self.lmax[i]!=-1:
-          ncls = ncls.at[i].set(cls[off:off+self.lmax[i]+1])
-          off += self.lmax[i]+1
-      return ncls,nuisance_dict
-    return cls,nuisance_dict
-
-  def normalize_mnp(self,cls,nuisance_dict={}):
-    if (len(cls.shape)==1 or cls.shape[-1]==self.parlen):
-      nuisance_dict = dict(zip(self.extra_parameter_names,cls[-len(self.extra_parameter_names):]))|nuisance_dict
-      ncls = jnp.zeros((6,nm.max(self.lmax)+1),dtype=jnp64)
-      off = 0
-      for i in range(6):
-        if self.lmax[i]!=-1:
-          ncls[i] = (cls[off:off+self.lmax[i]+1])
-          off += self.lmax[i]+1
-      return ncls,nuisance_dict
-    return cls,nuisance_dict
-
-  def normalize_clik(self,cls,nuisance_dict={}):
-    if (len(cls.shape)==1 or cls.shape[-1]==self.parlen):
-      ncls = nm.array(cls*1.)
-      ncls[-len(self.extra_parameter_names):] = [nuisance_dict[p] for p in self.extra_parameter_names]
-      return ncls
-    else:
-      ncls = nm.zeros(self.parlen)
-      off = 0
-      for i in range(6):
-        if self.lmax[i]!=-1:
-          cls[off:off+self.lmax[i]+1] = ncls[i] 
-          off += self.lmax[i]+1
-      ncls[-len(self.extra_parameter_names):] = [nuisance_dict[p] for p in self.extra_parameter_names]
-      return ncls       
-
+  def _init_def_priors(self,clkl,radical):
+    self._default =OrderedDict()
   
-  @partial(jit, static_argnums=(0,3))
-  def __call__(self,cls,nuisance_dict={},chi2_mode=False):
-    if cls.shape[-1]==self._parlen and len(cls.shape)==2:
-      return jnp.array([self(c,nuisance_dict) for c in cls],dtype=jnp64)
-    cls,nuisance_dict = self.normalize(cls,nuisance_dict)
-    tot_dict = nuisance_dict|self._default
-    for old,new in self.rename_dict.items():
-      tot_dict[old] = tot_dict[new]
-      del(tot_dict[new])
-    lkl = self._internal(cls,tot_dict,chi2_mode)
-    if not chi2_mode:
-      lkl += self.prior(nuisance_dict)
-    return lkl
+    if "default" in clkl[radical]:
+      names = clkl[radical+"/default/name"].replace("\0"," ").split()
+      loc = clkl[radical+"/default/loc"]
+      for n,l in zip(names,loc):
+        self._default[n] = l
+  
+    self._prior =OrderedDict()
+  
+    if "prior" in clkl[radical]:
+      names = clkl[radical+"/prior/name"].replace("\0"," ").split()
+      loc = clkl[radical+"/prior/loc"]
+      var = clkl[radical+"/prior/var"]
+      for n,l,v in zip(names,loc,var):
+        self._prior[n] = (l,v)
+  
+    self.rename_dict={}
 
-  @partial(jit, static_argnums=(0,))
-  def prior(self,nuisance_dict):
-    lkl = 0
-    for p in self._prior:
-      if isinstance(p,tuple):
-        vl = jnp.array([nuisance_dict[pp] for pp in p],dtype=jnp64)
-      else:
-        vl = jnp.array(nuisance_dict[p],dtype=jnp64)
-      #print(p,vl,self._prior[p](vl))
-      lkl += self._prior[p](vl)
-    return lkl
+    # jax or numpy :
+    if hasjax:
+      self.normalize = self.normalize_jax
+    else:
+      self.normalize = self.normalize_mnp
+
+    self._parlen = nm.sum(self._lmax+1)+len(self.extra_parameter_names)
+    self._default_par = None
+
+    print("----\n%s"%version());  # noqa: F405
+
+class clik(_clik_common):
+  def __init__(self,filename,**options):
+
+    clkl = cldf.open(filename)
+
+    if clkl["clik/n_lkl_object"]!=1:
+      raise clik_emul_error("only one likelihood object supported in clik_emul")
+
+    lkl = clkl["clik/lkl_0"]
+
+    self._lmax = clkl["clik/lmax"]
+
+
+    lkl_type = lkl["lkl_type"]
+
+    if lkl_type not in _supported:
+      raise clik_emul_error("unsupported likelihood type %s"%lkl_type)
+
+    if _supported[lkl_type]: 
+      lkl_type = _supported[lkl_type]
+
+    try:
+      md = importlib.import_module("."+lkl_type,__package__)
+      self._internal = getattr(md,"%s_lkl"%lkl_type)(lkl,**options)
+    except ImportError as e:
+      raise clik_emul_error("could not import likelihood %s"%lkl_type)
+    except AttributeError as e:
+      raise clik_emul_error("could not find likelihood %s"%lkl_type)
+
+    self._init_def_priors(clkl,"clik")
+  
+    if "check_param" in clkl["clik"]:
+      par = clkl["clik"]["check_param"]
+      self._default_par = jnp.array(par,dtype=jnp64)
+      res = jnp64(clkl["clik"]["check_value"])
+      res2 = self(jnp.array(par,dtype=jnp64))
+  
+      print("Checking likelihood '%s' on test data. got %g expected %g (diff %g)"%(filename,res2,res,res-res2))
+
+    print("----")
+
+    if hasattr(self._internal,"_post_init"):
+      self._internal._post_init(clkl,**options)
+
+    # at this stage I can jit a few things
+    if hasjax:
+      #self.__call__ = jit(self.__call__,static_argnums=(-1,))
+      #self.prior = jit(self.prior)
+      #self.normalize_jax = jit(self.normalize_jax,static_argnums=(0,))
+      pass
+
+  def __getattr__(self,name):
+    return getattr(self._internal,name)
+
 
   def candl_init(self,**options):
     self._internal.candl_init(self,**options)
@@ -531,3 +537,108 @@ def generate_prior_function(v,**options):
         lc = jnp.array(v[1],dtype=jnp64)
         return lambda x: -.5 * (jnp.dot(lc,x)-v[2])**2/v[3]
 
+##### Lensing suport
+
+class clik_lensing(_clik_common):
+  
+#  def get_extra_parameter_names(self,rename=True):
+#    ext = ["A_planck"]
+#    if rename:
+#      return [self.rename_dict.get(old,old) for old in ext if self.rename_dict.get(old,old) not in self._default]
+#    return v
+
+
+#
+#  @property 
+#  def extra_parameter_names(self):
+#    return self.get_extra_parameter_names()
+#
+  def __init__(self,filename,**options):
+
+    clkl = cldf.open(filename)
+    assert clkl["clik_lensing/itype"]==4
+
+    _lmax = clkl["clik_lensing/lmax"]
+    hascl = clkl["clik_lensing/hascl"]
+    lmax = [-1]*7
+    lmax[0] = _lmax
+    for i in range(6):
+      if hascl[i]:
+        lmax[i+1] = _lmax
+    self._lmax = jnp.array(lmax)
+
+    self.nlt = nm.sum(self.lmax)+7
+    self.nbins = clkl["clik_lensing/nbins"]
+    self.pp_hat = jnp64(clkl["clik_lensing/pp_hat"])
+    assert self.pp_hat.shape[0]==self.nbins
+    self.bins = jnp64(clkl["clik_lensing/bins"])
+    self.bins = jnp.reshape(self.bins,(self.nbins,-1))
+    #assert self.bins.shape[0]==self.nbins+1
+    self.siginv = jnp64(clkl["clik_lensing/siginv"])
+    self.siginv = jnp.reshape(self.siginv,[self.nbins,self.nbins])
+
+    self.cors=None
+
+    if "cors" in clkl:
+      self.cors = jnp64(clkl["clik_lensing/cors"])
+      self.cors = jnp.reshape(self.cors,[self.nlt,self.nbins])
+      
+    self.cl_fid = jnp64(clkl["clik_lensing/cl_fid"])
+    assert self.cl_fid.shape[0]==self.nlt
+    #self.cl_fid = jnp.reshape(self.cl_fid,(-1,self.lmax[0]+1))
+
+    self.renorm = clkl["clik_lensing/renorm"]
+    self.ren1 = clkl["clik_lensing/ren1"]
+
+    self.varpar=[]
+    if clkl["clik_lensing/has_calib"]:
+      self.varpar=["A_planck"]
+
+    if "cor0" in clkl:
+      self.cor0 = jnp64(clkl["clik_lensing/cor0"])
+      assert self.cor0.shape[0]==self.nbins
+    else:
+      self.cor0 = 0
+
+    self._m_llp1_2 = jnp64((nm.arange(_lmax+1)*(nm.arange(_lmax+1)+1.))**2/2./nm.pi)
+    self._m_llp1 = jnp.tile(jnp64(nm.arange(_lmax+1)*(nm.arange(_lmax+1)+1.)/2./nm.pi),nm.sum(self.has_cl)-1)
+
+    self._init_def_priors(clkl,"clik_lensing")
+    print(self.cl_fid)
+    print(jnp64([1.]))
+    self._default_par = jnp.concatenate([self.cl_fid,jnp64([1.])])
+    selftest = self(self.default_par)
+    if "check" in clkl:
+      cv = clkl["clik_lensing/check"]
+      print("Checking likelihood '%s' on test data. got %g expected %g (diff %g)"%(filename,selftest,cv,cv-selftest))
+    else:
+      print("Checking likelihood '%s' on test data. got %g"%(filename,selftest))
+    print("----")
+
+    def _internal(cls,nuisance_dict,chi2_mode):
+      calib=1.
+      if len(self.extra_parameter_names)==1:
+        calib = nuisance_dict["A_planck"]
+        calib = 1./(calib*calib);
+      calib = jnp64(calib)
+
+      
+      vls = jnp.concatenate([cls[i] for i in range(7) if self.lmax[i]!=-1])
+      
+      bcls = jnp.dot(self.bins,vls[0]*llp1_2) - self.cor0
+      
+      if self.cors is not None:
+        fpars = vls
+        if self.renorm==0:
+          fpars = self.cl_fid
+        fphi = cls[0]
+        if self.ren1 == 0:
+          fphi = self.cl_fid[:self.lmax[0]+1]
+        curfid = jnp.concatenate([fphi*self._m_llp1_2,fpars[self.lmax[0]+1:]*calib*self._m_llp1])
+        bcls = bcls + self.cors @ curfid
+
+      delta = self.pp_hat - bcls
+
+      lkl = -.5* delta @ (self.siginv @ delta)
+
+      return lkl

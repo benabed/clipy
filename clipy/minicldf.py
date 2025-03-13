@@ -275,3 +275,14 @@ class forfile:
   def close(self):
     self.bf=''
     self.fi.close()
+
+def copyfile(pathfrom, pathto,replace=False):
+  import shutil
+  if osp.exists(pathto) and osp.isdir(pathto) and replace:
+    shutil.rmtree(pathto)
+  elif osp.exists(pathto) and not osp.isdir(pathto) and replace:
+    os.remove(pathto)
+  if osp.exists(pathfrom) and osp.isdir(pathfrom):
+    shutil.copytree(pathfrom,pathto)
+  else:
+    shutil.copy(pathfrom,pathto)

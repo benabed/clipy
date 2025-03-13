@@ -5,8 +5,10 @@
 import sys
 
 import numpy as nm
-import clipy
-import clipy.cldf as hpy
+import clipy as clipy
+
+hpy = clipy.cldf
+clipo=clipy
 try:
   import clik as clik
   _hasclik = True
@@ -14,7 +16,10 @@ except:
   _hasclik = False
 
 
-def main(argv):
+
+def main():
+  clipy=clipo
+  argv=sys.argv
   if len(sys.argv)!=2:
     print("clipy version "+clipy.version())
     if _hasclik:
@@ -24,7 +29,8 @@ def main(argv):
 
   try:
     main_CMB(argv)
-  except Exception,e:
+    sys.exit(0)
+  except Exception as e:
     print("clipy failed with error %s"%e)
     if not _hasclik:
       sys.exit(1)
@@ -69,7 +75,7 @@ def main_CMB(argv):
     for n,l in zip(nms,loc):
       print("    %s = %g"%(n,l))
   options = clikl.get_options()
-  if len(options)!=0:
+  if  options and len(options)!=0:
     print("  number of initialization options %d"%(len(options)))
     for n in options:
       print("    %s"%n)
@@ -107,7 +113,7 @@ def main_CMB(argv):
         else:
           print("    component %d : %s"%(nc,lkli["component_%d"%nc].attrs["component_type"]))
 
-    extn = clikl.get_extra_parameter_names_by_lkl(ilkl)
+    extn = clikl.get_extra_parameter_names()
     print("    number of extra parameters = %d %s"%(len(extn),extn))
     ilkl +=1
 
@@ -144,4 +150,4 @@ def main_lensing(argv):
     print("     %s"%nn)
 
 if __name__=="__main__":
-  main(sys.argv)
+  main()

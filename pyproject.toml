@@ -32,8 +32,9 @@ dependencies = [
 name = "clipy"
 
 [project.scripts]
-clipy_print = "tools.clipy_print:main"
-clipy_example_py = "tools.clipy_example_py:main"
+clipy_print = "clipy.tools.clipy_print:main"
+clipy_example_py = "clipy.tools.clipy_example_py:main"
+clipy_change_data = "clipy.tools.clipy_change_data:main"
 
 [project.urls]
 Source = "https://github.com/benabed/clipy"

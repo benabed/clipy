@@ -1,12 +1,11 @@
 """Pure python clik implementation with jax support and candl integration."""
 
 __author__ = ["K. Benabed","L. Balkenhol"]
-__version__ = "0.11"
+__version__ = "0.12b"
 __description__ = "Pure python clik implementation with jax support and candl integration."
 
 def version():
   return "clipy_"+__version__
-
 
 import os
 try:
@@ -58,7 +57,7 @@ from . import minicldf as cldf
 def split_cldf_namelist(jnpl):
   return jnpl.replace("\0"," ").split()
 
-from .lkl import clik,clik_candl
+from .lkl import clik,clik_candl, clik_lensing
 
 def _mini_searchsorted(a,x):
   lo = 0

@@ -7,8 +7,8 @@ import sys
 import numpy as nm
 import clipy
 
-def main(argv):
-  main_CMB(argv)
+def main():
+  main_CMB(sys.argv)
 
 def main_CMB(argv):
   from optparse import OptionParser
@@ -51,4 +51,4 @@ def main_CMB(argv):
     print(clfile+", ".join([k+" = %g"%pars[k] for k in pars])+" -> %g"%nres)
 
 if __name__=="__main__":
-  main(sys.argv)
+  main()
