@@ -1,10 +1,8 @@
 from . import *
 
-from . import smica_component as smcmp
-
 from . import lkl 
 
-class simall_lkl(lkl._clik_lkl):
+class simall_lkl(lkl._clik_cmb):
 
   def __init__(self,lkl,**options):
     super().__init__(lkl,**options)

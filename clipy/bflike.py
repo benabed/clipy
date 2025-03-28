@@ -1,7 +1,5 @@
 from . import *
 
-from . import smica_component as smcmp
-
 from . import lkl 
 
 def read_namelist(path):
@@ -24,7 +22,7 @@ def read_namelist(path):
         l = f.readline()
   return res
 
-class bflike_lkl(lkl._clik_lkl):
+class bflike_lkl(lkl._clik_cmb):
 
   def __init__(self,lkl,**options):
     import astropy.io.fits as pf
