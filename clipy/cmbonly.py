@@ -1,12 +1,10 @@
 from . import *
 
-from . import smica_component as smcmp
-
 from . import lkl 
 
 import re
 
-class cmbonly_lkl(lkl._clik_lkl):
+class cmbonly_lkl(lkl._clik_cmb):
 
   def _crop(self,bin_min_tt=None,bin_max_tt=None,bin_min_te=None,bin_max_te=None,bin_min_ee=None,bin_max_ee=None):
     if bin_min_tt is not None:

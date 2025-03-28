@@ -1,7 +1,5 @@
 from . import *
 
-from . import smica_component as smcmp
-
 from . import lkl 
 
 if not hasjax:
@@ -14,7 +12,7 @@ else:
   from jax import lax
   cond = lax.cond
 
-class gibbs_lkl(lkl._clik_lkl):
+class gibbs_lkl(lkl._clik_cmb):
   
   def __init__(self,lkl,**options):
     import astropy.io.fits as pf
