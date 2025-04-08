@@ -439,6 +439,7 @@ class _clik_lensing(_clik_cmb):
     calib=1.
     if len(self.celf.extra_parameter_names)==1:
       calib = nuisance_dict["A_planck"]
+      #print(calib,nuisance_dict)
       calib = 1./(calib*calib);
     calib = jnp64(calib)
     

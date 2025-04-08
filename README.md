@@ -1,6 +1,6 @@
 `clipy`
 ======
-*January 2025*
+*March 2025*
 
 `clipy` is a pure python implementation of most of [`clik`](https://github.com/benabed/clik) with [`JAX`](https://github.com/google/jax) support (see [here](#Likelihood-files) for the list of currently supported likelihoods).
 
@@ -27,15 +27,18 @@ following files :
 - low-ell
 	- all the simall files (EE, BB and EEBB), including the sroll2 versions from [Pagano et al. A&A 635, A99 (2020)](https://doi.org/10.1051/0004-6361/201936630) available [here](https://web.fe.infn.it/~pagano/low_ell_datasets/sroll2).
 	- the commander file	
+- lensing
+    - all the lensing likelihood from the PR3 release as well as the PR4 release (available here -- add link)  
 
 `clipy` also allows to perform $ell$-range and spectra selections at initialisation time for the high-ell likelihood, without having to resort to the `clik_change_lrange` tool to create a new likelihood file ([see below](#New-initialisation-time-features)).
 
 As a reminder, the `clik` likelihood files are directories containing a fixed hierarchy of files and directory containing the data and metadata necessary to compute the likelihood of a given CMB power spectrum or spectra along with nuisance parameters given a part of the Planck data (at large or small scales, using either temperature, polarisation or both datasets, and using a given subset of frequency channels).
 
 ## Version 
-The code is at version **clipy_0.11**
+The code is at version **clipy_0.12**
 
 ### History
+- **clipy_0.12** (03/25) - multiple corrections. Correct installation of the CLI tools (`clipy_print`, etc...). Add lensing likelihoods. Refactor code.
 - **clipy_0.11** (01/25) - Correct `commander` which was failing on some macos jax version. Improve documentation. Correct crop bug in 32bit mode.
 - **clipy_0.1** (11/24) - initial release
 
@@ -167,6 +170,9 @@ If `cls` is a two dimensional array with shape `(6,max(CMBlkl.lmax))`, `nuisance
 
 Parameter vectors fllowing the classical `clik` calling API and the new spectra and nuisance dictionnary pairs following the new API can be transformed into one another using the `normalize`  (from `clik` API to the new one) and `normalize_clik` (from the new API to the `clik` one) attribute of the clipy objects, as described [above](#New-features-of-clipy-objects).
 
+### Lensing likelihood
+
+Lensing likelihood works the same way as CMB likelihoods. However, the Cl arrays that have to be passed to the likelihood must of course also include the 
 
 ## Example code
 

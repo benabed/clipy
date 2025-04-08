@@ -6,8 +6,9 @@ import sys
 
 import numpy as nm
 import clipy as clipy
+import clipy.lkl 
 
-hpy = clipy.cldf
+hpy = clipy.minicldf
 clipo=clipy
 try:
   import clik as clik
@@ -28,8 +29,14 @@ def main():
     sys.exit(1)
 
   try:
-    main_CMB(argv)
-    sys.exit(0)
+    clikl = clipy.clik(sys.argv[1])
+    if len(clikl.has_cl)==6:
+      main_CMB(argv,clikl)
+      sys.exit(0)
+    elif len(clikl.has_cl)==7:
+      main_lensing(argv,clikl)
+      sys.exit(0)
+    raise Exception("Don't know what to do with %s"%sys.argv[1])
   except Exception as e:
     print("clipy failed with error %s"%e)
     if not _hasclik:
@@ -37,13 +44,14 @@ def main():
     print("Try with clik")
 
   if clik.try_lensing(argv[1]):
-    main_lensing(argv)
+    clikl = clik.clik_lensing(argv[1])
+    main_lensing(argv,clikl)
     return
   clipy=clik 
-  main_CMB(argv)
+  clikl = clik.clik(argv[1])
+  main_CMB(argv,clikl)
 
-def main_CMB(argv):
-  clikl = clipy.clik(sys.argv[1])
+def main_CMB(argv,clikl):
 
   extn = clikl.extra_parameter_names
   
@@ -117,10 +125,10 @@ def main_CMB(argv):
     print("    number of extra parameters = %d %s"%(len(extn),extn))
     ilkl +=1
 
-def main_lensing(argv):
-  lkl = clik.clik_lensing(sys.argv[1])
+def main_lensing(argv,clikl):
+  lkl = clikl
   print("clik lensing file = %s"%sys.argv[1])
-  if hpy.cldf.is_cldf(argv[1]):
+  if hpy.is_cldf(argv[1]):
     ff = hpy.File(argv[1])
     ty = ff["clik_lensing/itype"]
     if ty==0:
