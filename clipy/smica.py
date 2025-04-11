@@ -319,7 +319,7 @@ class smica_lkl(lkl._clik_cmb):
       crop_cmd = crop_cmd.split("\n")
       msk = translate_crop(crop_cmd[0],self.mt,self.me,self.hascl,[100,143,217],self.lmin,self.lmax,self.bns_0)
       for cro in crop_cmd[1:]:
-        msk *= translate_crop(crop_cmd[0],self.mt,self.me,self.hascl,[100,143,217],self.lmin,self.lmax,self.bns_0)
+        msk *= translate_crop(cro,self.mt,self.me,self.hascl,[100,143,217],self.lmin,self.lmax,self.bns_0)
       rmsk = msk.flatten()[self.oo]
       noo = self.oo[rmsk]
       nrqh_f = self.rqh_f[rmsk]
