@@ -311,7 +311,7 @@ class smica_lkl(lkl._clik_cmb):
     lkl = -.5 * delta.T @ (self.siginv @ delta)
     return lkl
 
-  def _post_init(self,lkl,**options):
+  def _crop(self,lkl,**options):
     if options.get("crop",""):
       crop_cmd = options["crop"]
       if isinstance(crop_cmd,(tuple,list)):
@@ -648,7 +648,7 @@ def translate_crop(crop_cmd,mT,mP,hascl,frq,lmin,lmax,bins=None):
   ntot = nm.sum(ns)
   frq = [str(f) for f in frq]
   import re
-  regex = re.compile("(?i)^(no|only|crop|notch)?\\s*([T|E|B][T|E|B])(\\s+(\\d+)x(\\d+))?(\\s+(\\d+)?\\s+(\\d+)?)?(?:\\s+(strict|lax|half))?")
+  regex = re.compile("(?i)^(no|only|crop|notch)?\\s*([T|E|B][T|E|B])(\\s+(\\d+)x(\\d+))?(\\s+(-?\\d+)?\\s+(-?\\d+)?)?(?:\\s+(strict|lax|half))?")
   m = regex.match(crop_cmd.strip())
   ell = nm.arange(lmin,lmax+1)
   if m:
@@ -686,6 +686,10 @@ def translate_crop(crop_cmd,mT,mP,hascl,frq,lmin,lmax,bins=None):
     else:
       cmin = 0
       cmax = lmax
+    if cmin<0:
+      cmin=0
+    if cmax<0:
+      cmax=lmax
     lmsk = (ell>=cmin) * (ell<=cmax)
     
     if bins is not None:

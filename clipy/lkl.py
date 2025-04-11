@@ -255,8 +255,7 @@ class clik(_clik_common):
 
     print("----")
 
-    if hasattr(self._internal,"_post_init"):
-      self._internal._post_init(clkl,**options)
+    self._internal._post_init(clkl,**options)
 
     # at this stage I can jit a few things
     if hasjax:
@@ -379,6 +378,13 @@ class _clik_cmb:
       return cls
     return cls/jnp64(nuisance_dict[self.free_calib])**2
 
+  def _post_init(self,lkl,**options):
+    if "crop" in options:
+      self._crop(lkl,**options)
+
+  def _crop(self,candl,**options):
+    print("crop is not implemented for this likelihood")
+
   def candl_init(self,candl,**options):
     # add prior on A_planck
     if options.get("all_priors",False):
@@ -396,8 +402,8 @@ class _clik_cmb:
       for cmd in options["data_selection"]:
         # use a regex rather than cutting the cmd like lennart
         import re
-        regex = re.compile("(?i)^([T|E|B][T|E|B])?(\\s*(\\d+)x(\\d+))?(\\s*ell(<|>)(\\d+))?\\s*(remove|only)")
-        m = regex.match(crop_cmd.strip())
+        regex = re.compile("(?i)^([T|E|B][T|E|B])?(\\s*(\\d+)x(\\d+))?(\\s*(?:(?:ell)|l)(<|>)(\\d+))?\\s*(remove|only)")
+        m = regex.match(cmd.strip())
         if m[8]=="remove":
           crop_order = "no "
         else:
@@ -410,7 +416,7 @@ class _clik_cmb:
 
         trail=""
 
-        if m[2].strip():
+        if m[2] is not None and m[2].strip():
           trail += m[2].strip()
         
         if m[5]:
@@ -422,9 +428,9 @@ class _clik_cmb:
         trail += " strict"
         trail = " "+trail.strip()
         for spc in spec:
-          crop_cmd += [crop_order+" "+spec+trail]
+          crop_cmd += [crop_order+" "+spc+trail]
       options["crop"] = crop_cmd
-
+      self._crop(candl,**options)
 
   _cosmomc_names = {
   "A_planck" : "calPlanck",

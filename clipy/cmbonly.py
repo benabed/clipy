@@ -6,7 +6,7 @@ import re
 
 class cmbonly_lkl(lkl._clik_cmb):
 
-  def _crop(self,bin_min_tt=None,bin_max_tt=None,bin_min_te=None,bin_max_te=None,bin_min_ee=None,bin_max_ee=None):
+  def _i_crop(self,bin_min_tt=None,bin_max_tt=None,bin_min_te=None,bin_max_te=None,bin_min_ee=None,bin_max_ee=None):
     if bin_min_tt is not None:
       self.bin_min_tt = bin_min_tt
     if bin_max_tt is not None:
@@ -125,9 +125,9 @@ class cmbonly_lkl(lkl._clik_cmb):
     if hasjax:
       self._X_model = self._X_model_jax
 
-    self._crop()
+    self._i_crop()
 
-  def _post_init(self,lkl,**options):
+  def _crop(self,lkl,**options):
     if "crop" in options:
       r_bin_min_tt = self.bin_min_tt
       r_bin_max_tt = self.bin_max_tt
@@ -135,7 +135,7 @@ class cmbonly_lkl(lkl._clik_cmb):
       r_bin_max_te = self.bin_max_te
       r_bin_min_ee = self.bin_min_ee
       r_bin_max_ee = self.bin_max_ee
-      regex = re.compile("(?i)^(no|only|crop|notch)?\s*([T|E|B][T|E|B])(\s+(\d+)x(\d+))?(\s+(\d+)?\s+(\d+)?)?(?:\s+(strict|lax|half))?")
+      regex = re.compile("(?i)^(no|only|crop|notch)?\\s*([T|E|B][T|E|B])(\\s+(\\d+)x(\\d+))?(\\s+(-?\\d+)?\\s+(-?\\d+)?)?(?:\\s+(strict|lax|half))?")
       crop_cmd = options["crop"]
       if isinstance(crop_cmd,(tuple,list)):
         crop_cmd = "\n".join(crop_cmd)
@@ -170,6 +170,10 @@ class cmbonly_lkl(lkl._clik_cmb):
           else:
             cmin = self.plmin
             cmax = self.plmax
+          if cmin<0:
+            cmin=0
+          if cmax<0:
+            cmax=lmax
           lmsk = (ell>=cmin) * (ell<=cmax)
           lmsk = self.bns_0 @ lmsk
           if strictness<1:
@@ -235,7 +239,7 @@ class cmbonly_lkl(lkl._clik_cmb):
       else:
         print("EE disabled",end="\n")
 
-      self._crop(r_bin_min_tt,r_bin_max_tt,r_bin_min_te,r_bin_max_te,r_bin_min_ee,r_bin_max_ee)
+      self._i_crop(r_bin_min_tt,r_bin_max_tt,r_bin_min_te,r_bin_max_te,r_bin_min_ee,r_bin_max_ee)
     if hasjax:
       self._X_model_jax = jit(self._X_model_jax,static_argnums=(0,))
       self.__call__ = jit(self.__call__,static_argnums=(0,))
