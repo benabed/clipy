@@ -10,6 +10,7 @@ _supported = {"smica":"smica","gibbs_gauss":"gibbs","simall":"simall","bflike_sm
 import inspect
 
 from collections import OrderedDict
+import copy
 
 @partial(jit, static_argnums=(0,))
 def cls_fromcosmomc(cls):
@@ -206,7 +207,19 @@ class _clik_common:
 
 class clik(_clik_common):
 
+  @property
+  def init_filename(self):
+    return self._init_filename
+  
+  @property
+  def init_options(self):
+    return copy.deepcopy(self._init_options)
+  
   def __init__(self,filename,**options):
+    self._init_filename = filename
+
+    self._init_options = copy.deepcopy(options)
+    
     clkl = cldf.open(filename)
     if "clik" in clkl:
       self.__init__cmb(filename,**options)
@@ -474,7 +487,6 @@ class clik_candl(clik):
     # I should check if filename appens to be a yaml file and if so change filename to be the value of some magic value...
     # for now I defer to the regular clik init
     super().__init__(filename,**options)
-    self._data_set_file = filename
         
     # this one is a special case to deal with the candl specific features. Must be implemented by each likelihoods, in clik...
     self.candl_init(**options)
@@ -612,7 +624,7 @@ class clik_candl(clik):
 
   @property
   def data_set_file(self):
-    return self._data_set_file
+    return self.init_filename
 
 def generate_prior_function(v,**options):
   if callable(v):
