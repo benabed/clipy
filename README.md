@@ -38,7 +38,7 @@ As a reminder, the `clik` likelihood files are directories containing a fixed hi
 The code is at version **clipy_0.12**
 
 ### History
-- **clipy_0.13 (04/25) - multiple corrections for crop. add init_options and init_filename, two properties that allow to reinit an already initialized likelihood (usefull for cobaya)
+- **clipy_0.14 (04/25) - multiple corrections for crop. add init_options and init_filename, two properties that allow to reinit an already initialized likelihood (usefull for cobaya)
 - **clipy_0.12** (03/25) - multiple corrections. Correct installation of the CLI tools (`clipy_print`, etc...). Add lensing likelihoods. Refactor code.
 - **clipy_0.11** (01/25) - Correct `commander` which was failing on some macos jax version. Improve documentation. Correct crop bug in 32bit mode.
 - **clipy_0.1** (11/24) - initial release
