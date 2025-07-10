@@ -1,7 +1,7 @@
 """Pure python clik implementation with jax support and candl integration."""
 
 __author__ = ["K. Benabed","L. Balkenhol"]
-__version__ = "0.12b"
+__version__ = "0.15"
 __description__ = "Pure python clik implementation with jax support and candl integration."
 
 def version():
