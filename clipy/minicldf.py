@@ -243,12 +243,12 @@ class forfile:
     self.bf=""
   def read(self,fmt=''):
     if self.bf=='':
-      sz = nm.fromstring(self.fi.read(4),dtype=nm.int32)[0]
-      #print "want %d bytes"%sz
+      sz = nm.frombuffer(self.fi.read(4),dtype=nm.int32)[0]
+      #print( "want %d bytes"%sz)
       self.bf = self.fi.read(sz)
       #print self.bf
-      sz2 =nm.fromstring(self.fi.read(4),dtype=nm.int32)[0]
-      #print sz2 
+      sz2 =nm.frombuffer(self.fi.read(4),dtype=nm.int32)[0]
+      #print( sz2 )
       assert sz==sz
 
     if fmt=='':
@@ -266,7 +266,7 @@ class forfile:
     nelem=1
     if cmd[0]: 
       nelem = int(cmd[0])
-    res = nm.fromstring(self.bf[:itm*nelem],dtype=dtype)
+    res = nm.frombuffer(self.bf[:itm*nelem],dtype=dtype)
     self.bf=self.bf[itm*nelem:]
     if nelem==1:
       return res[0]

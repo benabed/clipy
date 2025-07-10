@@ -1,6 +1,6 @@
 `clipy`
 ======
-*March 2025*
+*July 2025*
 
 `clipy` is a pure python implementation of most of [`clik`](https://github.com/benabed/clik) with [`JAX`](https://github.com/google/jax) support (see [here](#Likelihood-files) for the list of currently supported likelihoods).
 
@@ -35,10 +35,11 @@ following files :
 As a reminder, the `clik` likelihood files are directories containing a fixed hierarchy of files and directory containing the data and metadata necessary to compute the likelihood of a given CMB power spectrum or spectra along with nuisance parameters given a part of the Planck data (at large or small scales, using either temperature, polarisation or both datasets, and using a given subset of frequency channels).
 
 ## Version 
-The code is at version **clipy_0.12**
+The code is at version **clipy_0.15**
 
 ### History
-- **clipy_0.14 (04/25) - multiple corrections for crop. add init_options and init_filename, two properties that allow to reinit an already initialized likelihood (usefull for cobaya)
+- **clipy_0.15** (07/25) - change `fromstring` to `frombuffer` when reading the `plik_lite` likelihood files to support latest `numpy`. 
+- **clipy_0.14** (04/25) - multiple corrections for crop. add init_options and init_filename, two properties that allow to reinit an already initialized likelihood (usefull for cobaya)
 - **clipy_0.12** (03/25) - multiple corrections. Correct installation of the CLI tools (`clipy_print`, etc...). Add lensing likelihoods. Refactor code.
 - **clipy_0.11** (01/25) - Correct `commander` which was failing on some macos jax version. Improve documentation. Correct crop bug in 32bit mode.
 - **clipy_0.1** (11/24) - initial release
